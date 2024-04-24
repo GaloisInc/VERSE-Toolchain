@@ -19,7 +19,27 @@
             "patterns": [
                 {
                     "name": "keyword.control.cn",
-                    "match": "\\b(requires|ensures)\\b"
+                    "match": "\\b(each|ensures|match|requires|return)\\b"
+                },
+                {
+                    "name": "keyword.declaration.function.cn",
+                    "match": "\\b(function|cn_function|predicate)"
+                },
+                {
+                    "name": "keyword.declaration.type.cn",
+                    "match": "\\b(datatype|type_synonym)\\b"
+                },
+                {
+                    "name": "keyword.declaration.other.cn",
+                    "match": "\\b(inv|lemma|let|take)\\b"
+                },
+                {
+                    "name": "keyword.other.cn",
+                    "match": "\\b(apply|assert|extract|spec|split_case|unfold)\\b"
+                },
+                {
+                    "name": "storage.modifier.cn",
+                    "match": "\\b(trusted|unchanged|\\[rec\\])\\b"
                 }
             ]
         },
