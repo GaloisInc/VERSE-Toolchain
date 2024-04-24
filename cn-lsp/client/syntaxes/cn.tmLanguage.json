@@ -9,6 +9,9 @@
         },
         {
             "include": "#types"
+        },
+        {
+            "include": "#literals"
         }
     ],
     "repository": {
@@ -25,6 +28,22 @@
                 {
                     "name": "storage.type.cn",
                     "match": "\\b(Block|bool|boolean|char|CN_bool|i8|i16|i32|i64|i128|int|integer|Owned|pointer|real|struct|u8|u16|u32|u64|u128|unsigned)\\b"
+                }
+            ]
+        },
+        "literals": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.cn",
+                    "match": "-?\\b[0-9]+(i|u)(8|16|32|64|128)\\b"
+                },
+                {
+                    "name": "constant.language.boolean.cn",
+                    "match": "\\b(true|false)\\b"
+                },
+                {
+                    "name": "constant.language.pointer.cn",
+                    "match": "\\bNULL\\b"
                 }
             ]
         }
