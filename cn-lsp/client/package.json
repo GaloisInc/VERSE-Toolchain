@@ -16,6 +16,17 @@
         "@types/node": "^20.12.7",
         "typescript": "^5.4.0"
     },
+    "contributes": {
+        "grammars": [
+            {
+                "path": "./syntaxes/cn.tmLanguage.json",
+                "scopeName": "source.c.cn",
+                "injectTo": [
+                    "source.c"
+                ]
+            }
+        ]
+    },
     "scripts": {
         "compile": "tsc --build",
         "watch": "tsc --build --watch"

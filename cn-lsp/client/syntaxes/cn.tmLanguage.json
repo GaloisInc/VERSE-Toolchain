@@ -1,0 +1,22 @@
+{
+
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "scopeName": "source.c.cn",
+    "injectionSelector": "L:comment.block.c",
+    "name": "CN",
+    "patterns": [
+        {
+            "include": "#keywords"
+        }
+    ],
+    "repository": {
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.cn",
+                    "match": "(requires|ensures)"
+                }
+            ]
+        }
+    }
+}
