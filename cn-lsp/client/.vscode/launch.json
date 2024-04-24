@@ -1,0 +1,25 @@
+// This file tells VSCode how to launch the application(s) that this project
+// defines.
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // The text that appears in VSCode's "Run and Debug" view
+            "name": "Run extension",
+
+            // We're building an extension, so we need an extension host
+            // configuration
+            "type": "extensionHost",
+
+            // The type of request ("attach" is the only other option)
+            "request": "launch",
+
+            // Do this before launching - in this case, run the `npm` script
+            // called "watch" (defined in `package.json`)
+            "preLaunchTask": {
+                "type": "npm",
+                "script": "watch"
+            },
+        }
+    ]
+}

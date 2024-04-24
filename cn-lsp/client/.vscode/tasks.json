@@ -1,0 +1,46 @@
+// This file tells VSCode how to map its development concepts - e.g. "build a
+// thing" - onto this particular project.
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            
+            // The name of the script (as defined in `package.json`) to run
+            "script": "compile",
+            
+            // How to recognize problems in log messages
+            "problemMatcher": "$tsc",
+            
+            // Default build task
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "type": "npm",
+            
+            // The name of the script (as defined in `package.json`) to run
+            "script": "watch",
+
+            // How to recognize problems in log messages
+            "problemMatcher": "$tsc-watch",
+            
+            // Non-default build task
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            
+            // Run in the background - in particular, don't wait for it to
+            // finish
+            "isBackground": true,
+
+            // Only show a terminal window for this task when it fails
+            "presentation": {
+                "reveal": "silent"
+            },
+        }
+    ]
+}
