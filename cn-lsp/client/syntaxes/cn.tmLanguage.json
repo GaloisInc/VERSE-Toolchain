@@ -19,7 +19,7 @@
             "patterns": [
                 {
                     "name": "keyword.control.cn",
-                    "match": "\\b(each|ensures|match|requires|return)\\b"
+                    "match": "\\b(each|match|return)\\b"
                 },
                 {
                     "name": "keyword.declaration.function.cn",
@@ -35,7 +35,7 @@
                 },
                 {
                     "name": "keyword.other.cn",
-                    "match": "\\b(apply|assert|extract|spec|split_case|unfold)\\b"
+                    "match": "\\b(apply|assert|ensures|extract|requires|spec|split_case|unfold)\\b"
                 },
                 {
                     "name": "storage.modifier.cn",
