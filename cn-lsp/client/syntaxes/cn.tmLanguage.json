@@ -1,5 +1,4 @@
 {
-
     "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
     "scopeName": "source.c.cn",
     "injectionSelector": "L:comment.block.c",
@@ -7,6 +6,9 @@
     "patterns": [
         {
             "include": "#keywords"
+        },
+        {
+            "include": "#types"
         }
     ],
     "repository": {
@@ -15,6 +17,14 @@
                 {
                     "name": "keyword.control.cn",
                     "match": "\\b(requires|ensures)\\b"
+                }
+            ]
+        },
+        "types": {
+            "patterns": [
+                {
+                    "name": "storage.type.cn",
+                    "match": "\\b(Block|bool|boolean|char|CN_bool|i8|i16|i32|i64|i128|int|integer|Owned|pointer|real|u8|u16|u32|u64|u128)\\b"
                 }
             ]
         }
