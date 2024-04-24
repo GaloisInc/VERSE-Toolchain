@@ -14,7 +14,7 @@
             "patterns": [
                 {
                     "name": "keyword.control.cn",
-                    "match": "(requires|ensures)"
+                    "match": "\\b(requires|ensures)\\b"
                 }
             ]
         }
