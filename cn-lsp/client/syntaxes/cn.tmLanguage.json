@@ -24,7 +24,7 @@
             "patterns": [
                 {
                     "name": "storage.type.cn",
-                    "match": "\\b(Block|bool|boolean|char|CN_bool|i8|i16|i32|i64|i128|int|integer|Owned|pointer|real|u8|u16|u32|u64|u128)\\b"
+                    "match": "\\b(Block|bool|boolean|char|CN_bool|i8|i16|i32|i64|i128|int|integer|Owned|pointer|real|struct|u8|u16|u32|u64|u128|unsigned)\\b"
                 }
             ]
         }
