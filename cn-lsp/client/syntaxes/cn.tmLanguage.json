@@ -21,6 +21,9 @@
                     "include": "#types"
                 },
                 {
+                    "include": "#functions"
+                },
+                {
                     "include": "#literals"
                 }
             ]
@@ -58,6 +61,14 @@
                 {
                     "name": "storage.type.cn",
                     "match": "\\b(Block|bool|boolean|char|CN_bool|i8|i16|i32|i64|i128|int|integer|Owned|pointer|real|struct|u8|u16|u32|u64|u128|unsigned)\\b"
+                }
+            ]
+        },
+        "functions": {
+            "patterns": [
+                {
+                    "name": "entity.name.function.cn",
+                    "match": "\\b(array_shift|member_shift|good)\\b"
                 }
             ]
         },
