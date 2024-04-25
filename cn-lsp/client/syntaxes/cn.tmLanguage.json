@@ -62,7 +62,7 @@
                 },
                 {
                     "name": "storage.modifier.cn",
-                    "match": "\\b(trusted|unchanged|\\[rec\\])\\b"
+                    "match": "\\b(trusted|unchanged)\\b|\\[rec\\]"
                 }
             ]
         },
