@@ -15,7 +15,17 @@ export function activate(context: vsc.ExtensionContext): void {
 
     const clientOptions: ct.LanguageClientOptions = {};
 
-    client = new ct.LanguageClient('CN', 'cn', serverOptions, clientOptions);
+    // A VSCode-interpretable identifier for this package (e.g. if we define a
+    // setting "foo", you might see an entry in a user's `settings.json` keyed
+    // by "cnClient.foo"). These tend to be camelCase.
+    const clientID: string = 'cnClient';
+
+    // A human-readable identifier for this package. I don't know the entirety
+    // of how this information is used, but it at least appears in some error
+    // messages displayed to the user, suffixed by " client".
+    const clientName: string = 'CN';
+
+    client = new ct.LanguageClient(clientID, clientName, serverOptions, clientOptions);
     client.start();
     console.log("started client");
 }
