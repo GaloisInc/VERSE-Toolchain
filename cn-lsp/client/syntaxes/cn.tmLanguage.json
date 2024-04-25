@@ -1,20 +1,30 @@
 {
     "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
     "scopeName": "source.c.cn",
-    "injectionSelector": "L:comment.block.c",
+    "injectionSelector": "L:source.c",
     "name": "CN",
     "patterns": [
         {
-            "include": "#keywords"
-        },
-        {
-            "include": "#types"
-        },
-        {
-            "include": "#literals"
+            "include": "#block"
         }
     ],
     "repository": {
+        "block": {
+            "begin": "\\s*/\\*@",
+            "end": "@\\*/",
+            "name": "source.cn",
+            "patterns": [
+                {
+                    "include": "#keywords"
+                },
+                {
+                    "include": "#types"
+                },
+                {
+                    "include": "#literals"
+                }
+            ]
+        },
         "keywords": {
             "patterns": [
                 {
