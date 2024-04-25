@@ -30,6 +30,12 @@
             "editor.tokenColorCustomizations": {
                 "textMateRules": [
                     {
+                        "scope": "source.cn",
+                        "settings": {
+                            "fontStyle": "italic"
+                        }
+                    },
+                    {
                         "scope": "punctuation.section.block.begin.cn",
                         "settings": {
                             "foreground": "#006600"
