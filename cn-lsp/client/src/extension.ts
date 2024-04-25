@@ -13,11 +13,7 @@ export function activate(context: vsc.ExtensionContext): void {
         transport: ct.TransportKind.stdio,
     };
 
-    const clientOptions: ct.LanguageClientOptions = {
-        documentSelector: [
-            { scheme: 'file', language: 'c' },
-        ]
-    };
+    const clientOptions: ct.LanguageClientOptions = {};
 
     client = new ct.LanguageClient('CN', 'cn', serverOptions, clientOptions);
     client.start();
