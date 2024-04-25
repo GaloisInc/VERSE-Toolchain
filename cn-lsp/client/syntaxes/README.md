@@ -3,6 +3,22 @@
 This syntax was created based on the tokens that CN lexes specially, which were
 determined by looking at
 [`c_lexer.mll`](https://github.com/rems-project/cerberus/blob/7441ffc7d32af2b33c8dca0699347314f87ece0f/parsers/c/c_lexer.mll).
+Of note, some of those tokens appear not to be documented in the tutorial or
+used in the examples it includes:
+- `accesses`
+- `alloc_id`
+- `have`
+- `instantiate`
+- `map`
+- `list`
+- `pack`
+- `print`
+- `set`
+- `tuple`
+- `unpack`
+
+Since I don't know the semantics of these tokens, I haven't written highlighting
+rules for them, so they'll remain unstyled.
 
 [VSCode's
 reference](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide)
