@@ -10,8 +10,8 @@
     ],
     "repository": {
         "block": {
-            "begin": "(\\s*/\\*@)",
-            "end": "(@\\*/)",
+            "begin": "\\s*/\\*@",
+            "end": "@\\*/",
             "beginCaptures": {
                 "0": {
                     "name": "punctuation.section.block.begin.cn"
