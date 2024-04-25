@@ -35,6 +35,9 @@
                 },
                 {
                     "include": "#literals"
+                },
+                {
+                    "include": "#comments"
                 }
             ]
         },
@@ -95,6 +98,14 @@
                 {
                     "name": "constant.language.pointer.cn",
                     "match": "\\bNULL\\b"
+                }
+            ]
+        },
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash.c",
+                    "match": "//.*"
                 }
             ]
         }
