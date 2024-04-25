@@ -25,7 +25,25 @@
                     "source.c"
                 ]
             }
-        ]
+        ],
+        "configurationDefaults": {
+            "editor.tokenColorCustomizations": {
+                "textMateRules": [
+                    {
+                        "scope": "punctuation.section.block.begin.cn",
+                        "settings": {
+                            "foreground": "#006600"
+                        }
+                    },
+                    {
+                        "scope": "punctuation.section.block.end.cn",
+                        "settings": {
+                            "foreground": "#006600"
+                        }
+                    }
+                ]
+            }
+        }
     },
     "scripts": {
         "compile": "tsc --build",
