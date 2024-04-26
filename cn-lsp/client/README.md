@@ -7,8 +7,3 @@ directory. From a terminal in that window:
 - Press F5 to launch an extension host window
   - If this prompts you with a menu of choices, choose the one that mentions
     "Extension Development"
-
-Currently, you'll see an error message appear saying that the client can't
-connect to the server. This is expected, as we haven't yet linked it to a
-server. The client-side functionality, namely highlighting, should work
-regardless.
