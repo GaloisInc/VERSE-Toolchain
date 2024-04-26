@@ -46,6 +46,12 @@
                         "settings": {
                             "foreground": "#006600"
                         }
+                    },
+                    {
+                        "scope": "invalid.deprecated.cn",
+                        "settings": {
+                            "fontStyle": "italic strikethrough"
+                        }
                     }
                 ]
             }

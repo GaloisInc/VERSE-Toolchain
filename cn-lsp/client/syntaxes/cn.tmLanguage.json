@@ -38,6 +38,9 @@
                 },
                 {
                     "include": "#comments"
+                },
+                {
+                    "include": "#deprecated"
                 }
             ]
         },
@@ -106,6 +109,14 @@
                 {
                     "name": "comment.line.double-slash.c",
                     "match": "//.*"
+                }
+            ]
+        },
+        "deprecated": {
+            "patterns": [
+                {
+                    "name": "invalid.deprecated.cn",
+                    "match": "\\b(pack|tuple|unpack)\\b"
                 }
             ]
         }
