@@ -61,7 +61,7 @@
                 },
                 {
                     "name": "keyword.other.cn",
-                    "match": "\\b(apply|assert|ensures|extract|requires|spec|split_case|unfold)\\b"
+                    "match": "\\b(accesses|apply|assert|ensures|extract|instantiate|requires|spec|split_case|unfold)\\b"
                 },
                 {
                     "name": "storage.modifier.cn",
@@ -73,7 +73,7 @@
             "patterns": [
                 {
                     "name": "storage.type.cn",
-                    "match": "\\b(Block|bool|boolean|char|CN_bool|i8|i16|i32|i64|i128|int|integer|Owned|pointer|real|struct|u8|u16|u32|u64|u128|unsigned)\\b"
+                    "match": "\\b(alloc_id|Block|bool|boolean|char|CN_bool|i8|i16|i32|i64|i128|int|integer|list|map|Owned|pointer|real|struct|u8|u16|u32|u64|u128|unsigned)\\b"
                 }
             ]
         },
@@ -81,7 +81,7 @@
             "patterns": [
                 {
                     "name": "entity.name.function.cn",
-                    "match": "\\b(array_shift|member_shift|good)\\b"
+                    "match": "\\b(array_shift|member_shift|good|print)\\b"
                 }
             ]
         },

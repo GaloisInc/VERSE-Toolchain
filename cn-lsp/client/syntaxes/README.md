@@ -5,14 +5,8 @@ determined by looking at
 [`c_lexer.mll`](https://github.com/rems-project/cerberus/blob/7441ffc7d32af2b33c8dca0699347314f87ece0f/parsers/c/c_lexer.mll).
 Of note, some of those tokens appear not to be documented in the tutorial or
 used in the examples it includes:
-- `accesses`
-- `alloc_id`
 - `have`
-- `instantiate`
-- `map`
-- `list`
 - `pack`
-- `print`
 - `set`
 - `tuple`
 - `unpack`
