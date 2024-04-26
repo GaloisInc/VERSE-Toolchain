@@ -66,6 +66,8 @@
     },
     "scripts": {
         "compile": "tsc --build",
-        "watch": "tsc --build --watch"
+        "watch": "tsc --build --watch",
+        "bundle": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+        "vscode:prepublish": "npm run bundle -- --minify"
     }
 }
