@@ -1,5 +1,6 @@
 {
     "name": "cn-client",
+    "displayName": "CN",
     "publisher": "galois",
     "version": "0.0.1",
     "engines": {
