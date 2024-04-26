@@ -2,6 +2,10 @@
     "name": "cn-client",
     "displayName": "CN",
     "publisher": "galois",
+    "repository": {
+        "url": "https://github.com/GaloisInc/VERSE-Toolchain",
+        "type": "git"
+    },
     "version": "0.0.1",
     "engines": {
         "vscode": "^1.75.0"
