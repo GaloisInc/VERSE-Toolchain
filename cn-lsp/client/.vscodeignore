@@ -1,0 +1,8 @@
+**
+!dist/extension.js
+!out/extension.js
+!syntaxes
+!LICENSE
+!package-lock.json
+!package.json
+!README.md
