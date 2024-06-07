@@ -1,0 +1,72 @@
+opam-version: "2.0"
+name: "cnlsp"
+version: "~dev"
+synopsis: "A short synopsis"
+description: "A longer description"
+maintainer: "Maintainer Name"
+authors: "Author Name"
+license: "LICENSE"
+tags: ["topics" "to describe" "your" "project"]
+homepage: "https://github.com/username/reponame"
+doc: "https://url/to/documentation"
+bug-reports: "https://github.com/username/reponame/issues"
+depends: [
+  "astring" {= "0.8.5" & with-doc}
+  "base-bigarray" {= "base"}
+  "base-bytes" {= "base"}
+  "base-domains" {= "base"}
+  "base-nnp" {= "base"}
+  "base-threads" {= "base"}
+  "base-unix" {= "base"}
+  "camlp-streams" {= "5.0.1" & with-doc}
+  "cmdliner" {= "1.2.0"}
+  "cppo" {= "1.6.9"}
+  "crunch" {= "3.3.1" & with-doc}
+  "csexp" {= "1.5.2"}
+  "dune" {= "3.15.2"}
+  "dune-configurator" {= "3.15.2"}
+  "fmt" {= "0.9.0"}
+  "fpath" {= "0.7.3" & with-doc}
+  "host-arch-arm64" {= "1"}
+  "host-system-other" {= "1"}
+  "jsonrpc" {= "1.17.0"}
+  "linol" {= "0.6"}
+  "linol-lwt" {= "0.6"}
+  "logs" {= "0.7.0"}
+  "lsp" {= "1.17.0"}
+  "lwt" {= "5.7.0"}
+  "ocaml" {= "5.1.1"}
+  "ocaml-base-compiler" {= "5.1.1"}
+  "ocaml-config" {= "3"}
+  "ocaml-options-vanilla" {= "1"}
+  "ocamlbuild" {= "0.14.3"}
+  "ocamlfind" {= "1.9.6"}
+  "ocplib-endian" {= "1.2"}
+  "odoc" {= "2.4.2" & with-doc}
+  "odoc-parser" {= "2.4.2" & with-doc}
+  "ppx_yojson_conv_lib" {= "v0.16.0"}
+  "ptime" {= "1.1.0" & with-doc}
+  "re" {= "1.11.0" & with-doc}
+  "result" {= "1.5" & with-doc}
+  "seq" {= "base"}
+  "topkg" {= "1.0.7"}
+  "trace" {= "0.7"}
+  "tyxml" {= "4.6.0" & with-doc}
+  "uutf" {= "1.0.3"}
+  "yojson" {= "2.1.2"}
+]
+build: [
+  ["dune" "subst"] {dev}
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "@install"
+    "@runtest" {with-test}
+    "@doc" {with-doc}
+  ]
+]
+dev-repo: "git+https://github.com/username/reponame.git"

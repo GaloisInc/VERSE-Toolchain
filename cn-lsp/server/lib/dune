@@ -1,0 +1,9 @@
+(library
+ (name cnlsp)
+ (libraries linol linol-lwt lsp))
+
+(env
+ (dev
+  (flags
+   ;; Disable promotion of warnings to errors
+   (:standard -warn-error -A))))

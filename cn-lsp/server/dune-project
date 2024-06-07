@@ -1,0 +1,52 @@
+(lang dune 3.12)
+
+(name cnlsp)
+
+(generate_opam_files true)
+
+(source
+ (github username/reponame))
+
+(authors "Author Name")
+
+(maintainers "Maintainer Name")
+
+(license LICENSE)
+
+(documentation https://url/to/documentation)
+
+(package
+ (name cnlsp)
+ (synopsis "A short synopsis")
+ (description "A longer description")
+ (depends
+  dune
+  (ocaml
+   (and
+    (>= 5.0.0)
+    (< 6.0.0)))
+  ;;
+  (jsonrpc
+   (and
+    (>= 1.17.0)
+    (< 2.0.0)))
+  (linol
+   (and
+    (>= 0.6)
+    (< 1.0)))
+  (linol-lwt
+   (and
+    (>= 0.6)
+    (< 1.0)))
+  (logs
+   (and
+    (>= 0.7.0)
+    (< 1.0.0)))
+  (lsp
+   (and
+    (>= 1.17.0)
+    (< 2.0.0))))
+ (tags
+  (topics "to describe" your project)))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
