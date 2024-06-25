@@ -102,13 +102,21 @@ class lsp_server =
       failwith ("Unknown method: " ^ method_name)
   end
 
-let run () : unit =
+let run (socket_path : string) : unit =
+  let open IO in
   let () = Log.d "Starting" in
   let s = new lsp_server in
-  let server = Rpc.create_stdio ~env:() s in
+  let sockaddr = Lwt_unix.ADDR_UNIX socket_path in
+  let sock = Lwt_unix.(socket PF_UNIX SOCK_STREAM) 0 in
   let task =
+    let* () = Lwt_unix.connect sock sockaddr in
+    let ic = Lwt_io.of_fd ~mode:Lwt_io.Input sock in
+    let oc = Lwt_io.of_fd ~mode:Lwt_io.Output sock in
+    let server = Rpc.create ~ic ~oc s in
     let shutdown () = s#get_status = `ReceivedExit in
-    Rpc.run ~shutdown server
+    let* () = Rpc.run ~shutdown server in
+    let () = Log.d "Shutting down" in
+    Lwt_unix.close sock
   in
   match Linol_lwt.run task with
   | () -> ()

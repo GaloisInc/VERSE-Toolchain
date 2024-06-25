@@ -10,9 +10,32 @@ let log_setup () : unit =
   ()
 ;;
 
+type options = { pipe_path : string }
+
+let rec unwords strs =
+  match strs with
+  | [] -> ""
+  | s :: ss -> s ^ " " ^ unwords ss
+;;
+
+let parse_arguments () : options =
+  let pipe_path_ref : string option ref = ref None in
+  let populate r s = r := Some s in
+  let usage = unwords [ "Usage: cn-lsp-server"; "--pipe <pipe-file>" ] in
+  let arglist = [ "--pipe", Arg.String (populate pipe_path_ref), "Path to pipe file" ] in
+  let handle_positional _ = () in
+  let () = Arg.parse arglist handle_positional usage in
+  match !pipe_path_ref with
+  | Some pipe_path -> { pipe_path }
+  | None ->
+    print_endline usage;
+    exit 1
+;;
+
 let main () : unit =
   log_setup ();
-  Server.run ()
+  let options = parse_arguments () in
+  Server.run options.pipe_path
 ;;
 
 let () = main ()
