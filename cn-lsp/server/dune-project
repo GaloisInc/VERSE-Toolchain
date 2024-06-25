@@ -26,6 +26,8 @@
     (>= 5.0.0)
     (< 6.0.0)))
   ;;
+  cerberus-lib
+  cn
   (jsonrpc
    (and
     (>= 1.17.0)

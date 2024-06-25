@@ -12,6 +12,8 @@ bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "dune" {>= "3.12"}
   "ocaml" {>= "5.0.0" & < "6.0.0"}
+  "cerberus-lib"
+  "cn"
   "jsonrpc" {>= "1.17.0" & < "2.0.0"}
   "linol" {>= "0.6" & < "1.0"}
   "linol-lwt" {>= "0.6" & < "1.0"}

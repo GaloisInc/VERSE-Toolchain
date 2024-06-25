@@ -3,3 +3,9 @@
  (name main)
  (package cnlsp)
  (libraries cnlsp logs lsp))
+
+(env
+ (dev
+  (flags
+   ;; Disable promotion of warnings to errors
+   (:standard -warn-error -A))))

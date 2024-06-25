@@ -32,12 +32,9 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   cwindow MessageType.Info notify msg
 ;;
 
-let cerr (notify : Rpc.notify_back) (msg : string) : unit IO.t =
-  cwindow MessageType.Error notify msg
-;;
-
-class lsp_server =
+class lsp_server (env : LspCn.cerb_env) =
   object
+    val env : LspCn.cerb_env = env
     inherit Rpc.server
 
     (* Required *)
@@ -55,14 +52,14 @@ class lsp_server =
 
     (* Required *)
     method on_notif_doc_did_change
-      ~notify_back:(_ : Rpc.notify_back)
-      (doc : VersionedTextDocumentIdentifier.t)
+      ~(notify_back : Rpc.notify_back)
+      (_doc : VersionedTextDocumentIdentifier.t)
       (_changes : TextDocumentContentChangeEvent.t list)
       ~old_content:(_ : string)
       ~new_content:(_ : string)
       : unit IO.t =
-      let msg = "Changed document: " ^ DocumentUri.to_string doc.uri in
-      let () = Log.d msg in
+      let open IO in
+      let* () = notify_back#send_diagnostic [] in
       IO.return ()
 
     (* Required *)
@@ -91,21 +88,42 @@ class lsp_server =
       ~server_request:(_ : Rpc.server_request_handler_pair -> Jsonrpc.Id.t IO.t)
       ~id:(_ : Jsonrpc.Id.t)
       (method_name : string)
-      (_params : Jsonrpc.Structured.t option)
+      (params : Jsonrpc.Structured.t option)
       : Json.t IO.t =
       let open IO in
-      let* () =
-        match method_name with
-        | "$/runCN" -> cerr notify_back "TODO"
-        | _ -> return ()
-      in
-      failwith ("Unknown method: " ^ method_name)
+      match method_name with
+      | "$/runCN" ->
+        let obj = Jsonrpc.Structured.yojson_of_t (Option.get params) in
+        let uri =
+          Json.Util.(
+            obj |> member "textDocument" |> member "uri" |> DocumentUri.t_of_yojson)
+        in
+        (* The URI isn't set automatically on unknown/custom requests *)
+        let () = notify_back#set_uri uri in
+        let* () =
+          match LspCn.(run (run_cn env uri)) with
+          | Ok () -> cinfo notify_back "No issues found"
+          | Error e ->
+            let d = LspCn.error_to_diagnostic e in
+            let* () = notify_back#send_diagnostic [] in
+            notify_back#send_diagnostic [ d ]
+        in
+        return `Null
+      | _ -> failwith ("Unknown method: " ^ method_name)
   end
 
 let run (socket_path : string) : unit =
   let open IO in
   let () = Log.d "Starting" in
-  let s = new lsp_server in
+  let cn_env =
+    match LspCn.(run (setup ())) with
+    | Ok t -> t
+    | Error e ->
+      let msg = LspCn.error_to_string e in
+      let () = Log.e ("Failed to start: " ^ msg) in
+      exit 1
+  in
+  let s = new lsp_server cn_env in
   let sockaddr = Lwt_unix.ADDR_UNIX socket_path in
   let sock = Lwt_unix.(socket PF_UNIX SOCK_STREAM) 0 in
   let task =

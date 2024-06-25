@@ -1,6 +1,6 @@
 (library
  (name cnlsp)
- (libraries linol linol-lwt lsp))
+ (libraries cn linol linol-lwt lsp))
 
 (env
  (dev
