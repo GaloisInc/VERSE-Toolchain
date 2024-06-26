@@ -1,7 +1,10 @@
 type error
 
 val error_to_string : error -> string
-val error_to_diagnostic : error -> Lsp.Types.Diagnostic.t
+
+val error_to_diagnostic
+  :  error
+  -> (Lsp.Types.DocumentUri.t * Lsp.Types.Diagnostic.t) option
 
 type 'a m
 

@@ -26,16 +26,34 @@ end
 module Cerb = struct
   open CerbM
 
-  let error_to_string ((loc, _cause) : error) : string =
-    "Cerberus Error: loc = " ^ Cerb_location.location_to_string loc
+  let loc_to_source_range (loc : Cerb_location.t) : (string * LspRange.t) option =
+    let posn_to_lsp (p : Lexing.position) : LspPosition.t =
+      LspPosition.create ~line:(p.pos_lnum - 1) ~character:(p.pos_cnum - p.pos_bol)
+    in
+    match Cn.Locations.start_pos loc, Cn.Locations.end_pos loc with
+    | Some start, Some end_ ->
+      (* TODO: handle when start and end have different filenames? *)
+      let path = start.pos_fname in
+      let range = LspRange.create ~start:(posn_to_lsp start) ~end_:(posn_to_lsp end_) in
+      Some (path, range)
+    | Some pos, None | None, Some pos ->
+      let path = pos.pos_fname in
+      let range = LspRange.create ~start:(posn_to_lsp pos) ~end_:(posn_to_lsp pos) in
+      Some (path, range)
+    | None, None -> None
   ;;
 
-  let error_to_diagnostic (_err : error) : LspDiagnostic.t =
-    let message = "cerberus error" in
-    let zero = Lsp.Types.Position.create ~character:0 ~line:0 in
-    let range = Lsp.Types.Range.create ~start:zero ~end_:zero in
+  let error_to_string ((loc, cause) : error) : string = CF.Pp_errors.to_string (loc, cause)
+
+  let error_to_diagnostic ((loc, cause) : error)
+    : (LspDocumentUri.t * LspDiagnostic.t) option
+    =
+    let message = error_to_string (loc, cause) in
     let source = "Cerberus" in
-    LspDiagnostic.create ~message ~range ~source ()
+    match loc_to_source_range loc with
+    | None -> None
+    | Some (path, range) ->
+      Some (LspDocumentUri.of_path path, LspDiagnostic.create ~message ~range ~source ())
   ;;
 
   type conf = CB.Pipeline.configuration
@@ -132,7 +150,8 @@ let error_to_string (err : error) : string =
     ^ desc
 ;;
 
-let error_to_diagnostic (err : error) : LspDiagnostic.t =
+(** Convert an error to an LSP diagnostic and the URI to which it applies *)
+let error_to_diagnostic (err : error) : (LspDocumentUri.t * LspDiagnostic.t) option =
   match err with
   | CerbError (loc, cause) -> Cerb.error_to_diagnostic (loc, cause)
   | CnError e ->
@@ -143,20 +162,11 @@ let error_to_diagnostic (err : error) : LspDiagnostic.t =
       | None -> short
       | Some d -> short ^ "\n" ^ Cn.Pp.plain d
     in
-    let posn_to_lsp (p : Lexing.position) : LspPosition.t =
-      LspPosition.create ~line:(p.pos_lnum - 1) ~character:(p.pos_cnum - p.pos_bol)
-    in
-    let range =
-      match Cn.Locations.start_pos e.loc, Cn.Locations.end_pos e.loc with
-      | Some s, Some e -> LspRange.create ~start:(posn_to_lsp s) ~end_:(posn_to_lsp e)
-      | Some x, None | None, Some x ->
-        LspRange.create ~start:(posn_to_lsp x) ~end_:(posn_to_lsp x)
-      | None, None ->
-        let zero = LspPosition.create ~character:0 ~line:0 in
-        LspRange.create ~start:zero ~end_:zero
-    in
     let source = "CN" in
-    LspDiagnostic.create ~message ~range ~source ()
+    (match Cerb.loc_to_source_range e.loc with
+     | None -> None
+     | Some (path, range) ->
+       Some (LspDocumentUri.of_path path, LspDiagnostic.create ~message ~range ~source ()))
 ;;
 
 type 'a m = ('a, error) result
