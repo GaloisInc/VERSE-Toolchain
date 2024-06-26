@@ -12,6 +12,8 @@ module IO = Rpc.IO
 
 (* LSP *)
 module LspTy = Lsp.Types
+module ConfigurationItem = LspTy.ConfigurationItem
+module ConfigurationParams = LspTy.ConfigurationParams
 module Diagnostic = LspTy.Diagnostic
 module DidSaveTextDocumentParams = LspTy.DidSaveTextDocumentParams
 module DocumentUri = LspTy.DocumentUri
@@ -22,6 +24,8 @@ module TextDocumentContentChangeEvent = LspTy.TextDocumentContentChangeEvent
 module TextDocumentIdentifier = LspTy.TextDocumentIdentifier
 module TextDocumentItem = LspTy.TextDocumentItem
 module VersionedTextDocumentIdentifier = LspTy.VersionedTextDocumentIdentifier
+module CNotif = Lsp.Client_notification
+module SReq = Lsp.Server_request
 
 let cwindow (level : MessageType.t) (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   let params = ShowMessageParams.create ~message:msg ~type_:level in
@@ -33,11 +37,28 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   cwindow MessageType.Info notify msg
 ;;
 
+module Config = struct
+  (** The client controls these options, and sends them at a server's request *)
+  type t = { run_CN_on_save : bool }
+
+  let default : t = { run_CN_on_save = false }
+
+  let t_of_yojson (json : Json.t) : t option =
+    let open Json.Util in
+    try
+      let run_CN_on_save = json |> member "runOnSave" |> to_bool in
+      Some { run_CN_on_save }
+    with
+    | _ -> None
+  ;;
+end
+
 let sprintf = Printf.sprintf
 
 class lsp_server (env : LspCn.cerb_env) =
   object (self)
     val env : LspCn.cerb_env = env
+    val mutable server_config : Config.t = Config.default
     inherit Rpc.server
 
     (* Required *)
@@ -81,10 +102,26 @@ class lsp_server (env : LspCn.cerb_env) =
       (params : DidSaveTextDocumentParams.t)
       : unit IO.t =
       let open IO in
-      let msg = "Saved document: " ^ DocumentUri.to_string params.textDocument.uri in
-      let () = Log.d msg in
-      let* () = cinfo notify_back "Saved!" in
-      return ()
+      if server_config.run_CN_on_save
+      then self#run_cn notify_back params.textDocument.uri
+      else return ()
+
+    method on_notif_initialized (notify_back : Rpc.notify_back) : unit IO.t =
+      self#update_configuration notify_back
+
+    method on_notification_unhandled
+      ~(notify_back : Rpc.notify_back)
+      (notif : CNotif.t)
+      : unit IO.t =
+      let open IO in
+      match notif with
+      | CNotif.Initialized -> self#on_notif_initialized notify_back
+      | _ ->
+        let s =
+          Json.to_string (Jsonrpc.Notification.yojson_of_t (CNotif.to_jsonrpc notif))
+        in
+        let () = Log.d ("Unhandled notification: " ^ s) in
+        return ()
 
     (***************************************************************)
     (***  Requests  ************************************************)
@@ -113,6 +150,41 @@ class lsp_server (env : LspCn.cerb_env) =
 
     (***************************************************************)
     (***  Other  ***************************************************)
+
+    method update_configuration (notify_back : Rpc.notify_back) : unit IO.t =
+      let open IO in
+      let cfg_section = ConfigurationItem.create ~section:"CN" () in
+      let params = ConfigurationParams.create ~items:[ cfg_section ] in
+      let req = SReq.WorkspaceConfiguration params in
+      let handle (response : (Json.t list, Jsonrpc.Response.Error.t) result) : unit IO.t =
+        let () =
+          match response with
+          | Ok [ section ] ->
+            (match Config.t_of_yojson section with
+             | None ->
+               Log.e
+                 (sprintf
+                    "Unrecognized config section, ignoring: %s"
+                    (Json.to_string section))
+             | Some cfg ->
+               let () =
+                 Log.d (sprintf "Replacing config with: %s" (Json.to_string section))
+               in
+               server_config <- cfg)
+          | Ok [] -> Log.w "No CN config section found"
+          | Ok sections ->
+            let ss = String.concat "," (List.map Json.to_string sections) in
+            Log.e (sprintf "Too many config sections: [%s]" ss)
+          | Error e ->
+            Log.e
+              (sprintf
+                 "Client responded with error: %s"
+                 (Json.to_string (Jsonrpc.Response.Error.yojson_of_t e)))
+        in
+        return ()
+      in
+      let _id = notify_back#send_request req handle in
+      return ()
 
     method run_cn (notify_back : Rpc.notify_back) (uri : DocumentUri.t) : unit IO.t =
       let open IO in
