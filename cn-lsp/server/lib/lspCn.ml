@@ -71,29 +71,28 @@ module Cerb = struct
     let permissive = false in
     let agnostic = false in
     let ignore_bitfields = false in
-    let bmc = false in
     let astprints : CB.Pipeline.language list = [] in
     let incl_dirs : string list = [] in
     let incl_files : string list = [] in
+    let macros : (string * string option) list = [] in
     let () =
       CG.set_cerb_conf
-        backend_name
-        exec
+        ~backend_name
+        ~exec
+        ~concurrency
+        ~defacto
+        ~permissive
+        ~agnostic
+        ~ignore_bitfields
         exec_mode
-        concurrency
-        error_verbosity
-        defacto
-        permissive
-        agnostic
-        ignore_bitfields
-        bmc;
+        error_verbosity;
       CF.Ocaml_implementation.set CF.Ocaml_implementation.HafniumImpl.impl;
       CF.Switches.set [ "inner_arg_temps"; "at_magic_comments" ];
       CF.Core_peval.config_unfold_stdlib := Cn.Sym.has_id_with Cn.Setup.unfold_stdlib_name
     in
     let* stdlib = CB.Pipeline.load_core_stdlib () in
     let* impl = CB.Pipeline.load_core_impl stdlib Cn.Setup.impl_name in
-    let conf = Cn.Setup.conf incl_dirs incl_files astprints in
+    let conf = Cn.Setup.conf macros incl_dirs incl_files astprints in
     return (conf, impl, stdlib)
   ;;
 
@@ -193,7 +192,7 @@ let run_cn (cerb_env : cerb_env) (uri : LspDocumentUri.t) : unit m =
   (* CLI flag? *)
   let inherit_loc : bool = true in
   let path = LspDocumentUri.to_path uri in
-  let* prog, (markers_env, ail_prog), statement_locs =
+  let* prog, (markers_env, ail_prog), _statement_locs =
     lift_cerb (Cerb.frontend cerb_env path)
   in
   lift_cn
@@ -201,5 +200,14 @@ let run_cn (cerb_env : cerb_env) (uri : LspDocumentUri.t) : unit m =
       let* prog' =
         Cn.Core_to_mucore.normalise_file ~inherit_loc (markers_env, ail_prog) prog
       in
-      Cn.Typing.run Cn.Context.empty (Cn.Check.check prog' statement_locs lemmata))
+      let* _ =
+        Cn.Typing.run Cn.Context.empty (Cn.Check.check_decls_lemmata_fun_specs prog')
+      in
+      let paused =
+        Cn.Typing.run_to_pause
+          Cn.Context.empty
+          (Cn.Check.check_decls_lemmata_fun_specs prog')
+      in
+      let* _ = Cn.Typing.pause_to_result paused in
+      Cn.Typing.run_from_pause (fun p -> Cn.Check.check p lemmata) paused)
 ;;
