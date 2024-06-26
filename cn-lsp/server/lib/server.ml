@@ -10,22 +10,21 @@ module Json = Yojson.Safe
 module Rpc = Linol_lwt.Jsonrpc2
 module IO = Rpc.IO
 
-(* LSP *)
-module LspTy = Lsp.Types
-module ConfigurationItem = LspTy.ConfigurationItem
-module ConfigurationParams = LspTy.ConfigurationParams
-module Diagnostic = LspTy.Diagnostic
-module DidSaveTextDocumentParams = LspTy.DidSaveTextDocumentParams
-module DocumentUri = LspTy.DocumentUri
-module MessageType = LspTy.MessageType
-module PublishDiagnosticsParams = LspTy.PublishDiagnosticsParams
-module ShowMessageParams = LspTy.ShowMessageParams
-module TextDocumentContentChangeEvent = LspTy.TextDocumentContentChangeEvent
-module TextDocumentIdentifier = LspTy.TextDocumentIdentifier
-module TextDocumentItem = LspTy.TextDocumentItem
-module VersionedTextDocumentIdentifier = LspTy.VersionedTextDocumentIdentifier
+(* LSP Types *)
 module CNotif = Lsp.Client_notification
+module ConfigurationItem = Lsp.Types.ConfigurationItem
+module ConfigurationParams = Lsp.Types.ConfigurationParams
+module Diagnostic = Lsp.Types.Diagnostic
+module DidSaveTextDocumentParams = Lsp.Types.DidSaveTextDocumentParams
+module DocumentUri = Lsp.Types.DocumentUri
+module MessageType = Lsp.Types.MessageType
+module PublishDiagnosticsParams = Lsp.Types.PublishDiagnosticsParams
+module ShowMessageParams = Lsp.Types.ShowMessageParams
 module SReq = Lsp.Server_request
+module TextDocumentContentChangeEvent = Lsp.Types.TextDocumentContentChangeEvent
+module TextDocumentIdentifier = Lsp.Types.TextDocumentIdentifier
+module TextDocumentItem = Lsp.Types.TextDocumentItem
+module VersionedTextDocumentIdentifier = Lsp.Types.VersionedTextDocumentIdentifier
 
 let cwindow (level : MessageType.t) (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   let params = ShowMessageParams.create ~message:msg ~type_:level in
@@ -96,7 +95,6 @@ class lsp_server (env : LspCn.cerb_env) =
       let () = Log.d msg in
       IO.return ()
 
-    (* Overridden *)
     method on_notif_doc_did_save
       ~(notify_back : Rpc.notify_back)
       (params : DidSaveTextDocumentParams.t)
@@ -126,7 +124,6 @@ class lsp_server (env : LspCn.cerb_env) =
     (***************************************************************)
     (***  Requests  ************************************************)
 
-    (* Overridden *)
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
       ~server_request:(_ : Rpc.server_request_handler_pair -> Jsonrpc.Id.t IO.t)
