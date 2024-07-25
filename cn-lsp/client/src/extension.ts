@@ -1,7 +1,6 @@
 import * as vsc from "vscode";
 import * as ct from "vscode-languageclient/node";
 
-import fs from "fs";
 import child_process from "child_process";
 
 let client: ct.LanguageClient;
@@ -14,16 +13,9 @@ export function activate(context: vsc.ExtensionContext): void {
         vsc.window.showErrorMessage("CN client: unable to find CN server");
         throw Error;
     }
-    const logFile = context.asAbsolutePath("./server-log.txt");
     const serverOptions: ct.Executable = {
         command: serverPath,
-        args: [logFile],
-        // In the future, we may want to define the `transport` field here,
-        // perhaps as `ct.TransportKind.stdio`, but doing so appends a
-        // command-line flag to the server invocation that the server doesn't
-        // recognize. Leaving `transport` undefined seems to result in
-        // communication via `stdio` (and no extra flag), which is what we
-        // currently want anyway
+        transport: ct.TransportKind.pipe,
     };
 
     const clientOptions: ct.LanguageClientOptions = {
@@ -87,14 +79,6 @@ function findServer(context: vsc.ExtensionContext): Maybe<string> {
     let envPath = process.env.CN_LSP_SERVER;
     if (envPath !== undefined) {
         return envPath;
-    }
-
-    // Is it in a sibling directory? We expect this to hold in debug settings,
-    // i.e. when the extension is running in a development host window.
-    console.log("Looking in sibling directory");
-    let siblingPath = context.asAbsolutePath("../server/bin/debug-server");
-    if (fs.existsSync(siblingPath)) {
-        return siblingPath;
     }
 
     // Is it on $PATH?

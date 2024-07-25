@@ -34,9 +34,6 @@ server. [Our server's README](../server/README.md) has instructions for a basic
 installation. If you want to control the exact server the client uses, these are
 the locations the client will search (in order) for a server executable:
 - The `CN_LSP_SERVER` environment variable
-- The path `../server/bin/debug-server` - when running the client in development
-  mode, this path is well-defined, pointing to the [debugging
-  harness](../server/bin/debug-server) defined in this repo
 - On the current `PATH`, for an executable named `cn-lsp-server`
 
 If the client can't find a server in one of these places, it will report an
