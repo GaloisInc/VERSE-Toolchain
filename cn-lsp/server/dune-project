@@ -4,21 +4,15 @@
 
 (generate_opam_files true)
 
-(source
- (github username/reponame))
+(authors "Sam Cowger")
 
-(authors "Author Name")
-
-(maintainers "Maintainer Name")
-
-(license LICENSE)
-
-(documentation https://url/to/documentation)
+(maintainers "Sam Cowger")
 
 (package
  (name cnlsp)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "CN Language Server")
+ (description
+  "A language server protocol implementation for the CN language")
  (depends
   dune
   (ocaml
@@ -47,8 +41,4 @@
   (lsp
    (and
     (>= 1.17.0)
-    (< 2.0.0))))
- (tags
-  (topics "to describe" your project)))
-
-; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
+    (< 2.0.0)))))

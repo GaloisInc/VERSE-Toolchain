@@ -1,15 +1,10 @@
 opam-version: "2.0"
 name: "cnlsp"
 version: "~dev"
-synopsis: "A short synopsis"
-description: "A longer description"
-maintainer: "Maintainer Name"
-authors: "Author Name"
-license: "LICENSE"
-tags: ["topics" "to describe" "your" "project"]
-homepage: "https://github.com/username/reponame"
-doc: "https://url/to/documentation"
-bug-reports: "https://github.com/username/reponame/issues"
+synopsis: "CN Language Server"
+description: "A language server protocol implementation for the CN language"
+authors: "Sam Cowger"
+maintainer: "Sam Cowger"
 depends: [
   "astring" {= "0.8.5" & with-doc}
   "base-bigarray" {= "base"}
@@ -69,4 +64,3 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/username/reponame.git"
