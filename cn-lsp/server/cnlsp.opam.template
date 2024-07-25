@@ -1,0 +1,7 @@
+pin-depends: [
+  [
+    "cerberus-lib.281cfc42f"
+    "git+ssh://git@github.com/rems-project/cerberus.git#281cfc42f"
+  ]
+  ["cn.281cfc42f" "git+ssh://git@github.com/rems-project/cerberus.git#281cfc42f"]
+]

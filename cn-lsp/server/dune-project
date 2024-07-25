@@ -20,8 +20,10 @@
     (>= 5.0.0)
     (< 6.0.0)))
   ;;
-  cerberus-lib
-  cn
+  (cerberus-lib
+   (= "281cfc42f"))
+  (cn
+   (= "281cfc42f"))
   (jsonrpc
    (and
     (>= 1.17.0)
