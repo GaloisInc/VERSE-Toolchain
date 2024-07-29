@@ -220,7 +220,7 @@ class lsp_server (env : LspCn.cerb_env) =
         notify_back#send_notification (Lsp.Server_notification.PublishDiagnostics params)
   end
 
-let run (socket_path : string) : unit =
+let run ~(socket_path : string) : unit =
   let open IO in
   let () = Log.d "Starting" in
   let cn_env =
