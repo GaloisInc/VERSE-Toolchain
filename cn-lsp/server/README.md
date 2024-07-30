@@ -1,17 +1,16 @@
 # Building and Installing
 
 Begin by installing OCaml and opam, if need be - here are
-[instructions](https://ocaml.org/docs/installing-ocaml) for how to do so. I
-recommend using OCaml 5.1.1, which was used to generate the provided lockfile
-and seems compatible with `cerberus`/`cn`. OCaml 5.0.0, which `cerberus`
-recommends, should also work, though you'll need to modify the provided commands
-slightly. 
+[instructions](https://ocaml.org/docs/installing-ocaml) for how to do so. CN and
+Cerberus currently recommend, and build with, OCaml 4.14.1, and that version was
+used to generate the lockfile which this installation process relies on. (I've
+also been able to work with other versions as recent as 5.1.1, and have included
+an alternate lockfile for 5.1.1 as well, but your mileage may vary.)
 
 I recommend creating and using an opam switch to maintain an isolated dependency
 installation and development environment:
 ```sh
-# for OCaml 5.0.0, replace `ocaml.5.1.1` with `ocaml.5.0.0`
-opam switch create <switch-name> ocaml.5.1.1
+opam switch create <switch-name> ocaml.4.14.1
 eval $(opam env --switch=<switch-name> --set-switch)
 ```
 
@@ -29,7 +28,6 @@ opam remove cn
 
 Now, install this project's dependencies:
 ```sh
-# for OCaml 5.0.0, don't say `--locked`
 opam install . --deps-only --locked -y
 ```
 
