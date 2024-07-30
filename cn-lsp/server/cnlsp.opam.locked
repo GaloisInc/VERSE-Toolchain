@@ -11,6 +11,7 @@ depends: [
   "base-bytes" {= "base"}
   "base-threads" {= "base"}
   "base-unix" {= "base"}
+  "cerberus" {= "281cfc42f"}
   "cerberus-lib" {= "281cfc42f"}
   "cmdliner" {= "1.3.0"}
   "cn" {= "281cfc42f"}
@@ -24,6 +25,7 @@ depends: [
   "csexp" {= "1.5.2"}
   "dune" {= "3.16.0"}
   "dune-configurator" {= "3.16.0"}
+  "fmt" {= "0.9.0"}
   "host-arch-arm64" {= "1"}
   "host-system-other" {= "1"}
   "jsonrpc" {= "1.17.0"}
@@ -83,6 +85,10 @@ build: [
   ]
 ]
 pin-depends: [
+  [
+    "cerberus.281cfc42f"
+    "git+ssh://git@github.com/rems-project/cerberus.git#281cfc42f"
+  ]
   [
     "cerberus-lib.281cfc42f"
     "git+ssh://git@github.com/rems-project/cerberus.git#281cfc42f"

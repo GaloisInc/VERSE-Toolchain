@@ -20,6 +20,8 @@
     (>= 4.14.1)
     (< 6.0.0)))
   ;;
+  (cerberus
+   (= "281cfc42f"))
   (cerberus-lib
    (= "281cfc42f"))
   (cn

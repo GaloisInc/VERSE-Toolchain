@@ -15,12 +15,11 @@ eval $(opam env --switch=<switch-name> --set-switch)
 ```
 
 Next, you need to install this project's dependencies. This project depends on
-`cerberus-lib` and `cn`, which it will fetch and build from a particular commit
-to their repository. However, if you have previously built and/or installed
-`cerberus-lib` or `cn` locally, you may need to uninstall them before installing
+`cerberus`, `cerberus-lib`, and `cn`, which it will fetch and build from a
+particular commit to their repository. However, if you have previously built
+ and/or installed `cn` locally, you may need to uninstall it before installing
 this project's dependencies, or else your existing version may shadow the
-version you're trying to install. This is more likely to happen with `cn`, which
-is built and installed in the course of development on `cerberus`.
+version you're trying to install.
 ```sh
 dune uninstall cn
 opam remove cn
