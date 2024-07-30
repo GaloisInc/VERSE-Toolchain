@@ -1,9 +1,3 @@
-(*
-   Disable method override warning: we have to override the default
-   `Linol_lwt.Jsonrpc2.server` methods to define its behavior.
-*)
-[@@@warning "-7"]
-
 module Json = Yojson.Safe
 
 (* Linol *)
@@ -218,7 +212,12 @@ class lsp_server (env : LspCn.cerb_env) =
         in
         let params = PublishDiagnosticsParams.create ~uri ?version ~diagnostics:ds () in
         notify_back#send_notification (Lsp.Server_notification.PublishDiagnostics params)
-  end
+  end [@@warning "-7"]
+(*
+   Warning 7 tells us that a method has been overridden. We disable it because
+   we have to override the default `Linol_lwt.Jsonrpc2.server` methods to define
+   its behavior.
+*)
 
 let run ~(socket_path : string) : unit =
   let open IO in
