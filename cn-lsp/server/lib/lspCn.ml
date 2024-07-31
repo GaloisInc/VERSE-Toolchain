@@ -200,14 +200,9 @@ let run_cn (cerb_env : cerb_env) (uri : LspDocumentUri.t) : unit m =
       let* prog' =
         Cn.Core_to_mucore.normalise_file ~inherit_loc (markers_env, ail_prog) prog
       in
-      let* _ =
-        Cn.Typing.run Cn.Context.empty (Cn.Check.check_decls_lemmata_fun_specs prog')
-      in
-      let paused =
-        Cn.Typing.run_to_pause
+      Cn.Typing.(
+        run
           Cn.Context.empty
-          (Cn.Check.check_decls_lemmata_fun_specs prog')
-      in
-      let* _ = Cn.Typing.pause_to_result paused in
-      Cn.Typing.run_from_pause (fun p -> Cn.Check.check p lemmata) paused)
+          (let@ wellformedness_result = Cn.Check.check_decls_lemmata_fun_specs prog' in
+           Cn.Check.check wellformedness_result lemmata)))
 ;;
