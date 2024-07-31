@@ -99,7 +99,7 @@ class lsp_server (env : LspCn.cerb_env) =
       else return ()
 
     method on_notif_initialized (notify_back : Rpc.notify_back) : unit IO.t =
-      self#update_configuration notify_back
+      self#fetch_configuration notify_back
 
     method on_notification_unhandled
       ~(notify_back : Rpc.notify_back)
@@ -142,26 +142,32 @@ class lsp_server (env : LspCn.cerb_env) =
     (***************************************************************)
     (***  Other  ***************************************************)
 
-    method update_configuration (notify_back : Rpc.notify_back) : unit IO.t =
+    (** Set the server's configuration to the provided, JSON-encoded
+        configuration *)
+    method set_configuration (config_section : Json.t) : unit =
+      match Config.t_of_yojson config_section with
+      | None ->
+        Log.e
+          (sprintf
+             "Unrecognized config section, ignoring: %s"
+             (Json.to_string config_section))
+      | Some cfg ->
+        let () =
+          Log.d (sprintf "Replacing config with: %s" (Json.to_string config_section))
+        in
+        server_config <- cfg
+
+    (** Fetch the client's current configuration and update the server's version
+        of it to match *)
+    method fetch_configuration (notify_back : Rpc.notify_back) : unit IO.t =
       let open IO in
-      let cfg_section = ConfigurationItem.create ~section:"CN" () in
-      let params = ConfigurationParams.create ~items:[ cfg_section ] in
+      let section = ConfigurationItem.create ~section:"CN" () in
+      let params = ConfigurationParams.create ~items:[ section ] in
       let req = SReq.WorkspaceConfiguration params in
       let handle (response : (Json.t list, Jsonrpc.Response.Error.t) result) : unit IO.t =
         let () =
           match response with
-          | Ok [ section ] ->
-            (match Config.t_of_yojson section with
-             | None ->
-               Log.e
-                 (sprintf
-                    "Unrecognized config section, ignoring: %s"
-                    (Json.to_string section))
-             | Some cfg ->
-               let () =
-                 Log.d (sprintf "Replacing config with: %s" (Json.to_string section))
-               in
-               server_config <- cfg)
+          | Ok [ section ] -> self#set_configuration section
           | Ok [] -> Log.w "No CN config section found"
           | Ok sections ->
             let ss = String.concat "," (List.map Json.to_string sections) in
