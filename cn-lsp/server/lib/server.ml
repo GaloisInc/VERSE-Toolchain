@@ -13,6 +13,8 @@ module DidSaveTextDocumentParams = Lsp.Types.DidSaveTextDocumentParams
 module DocumentUri = Lsp.Types.DocumentUri
 module MessageType = Lsp.Types.MessageType
 module PublishDiagnosticsParams = Lsp.Types.PublishDiagnosticsParams
+module Registration = Lsp.Types.Registration
+module RegistrationParams = Lsp.Types.RegistrationParams
 module ShowMessageParams = Lsp.Types.ShowMessageParams
 module SReq = Lsp.Server_request
 module TextDocumentContentChangeEvent = Lsp.Types.TextDocumentContentChangeEvent
@@ -103,7 +105,10 @@ class lsp_server (env : LspCn.cerb_env) =
       else return ()
 
     method on_notif_initialized (notify_back : Rpc.notify_back) : unit IO.t =
-      self#fetch_configuration notify_back
+      let open IO in
+      let* () = self#fetch_configuration notify_back in
+      let* () = self#register_did_change_configuration notify_back in
+      return ()
 
     method on_notification_unhandled
       ~(notify_back : Rpc.notify_back)
@@ -186,6 +191,42 @@ class lsp_server (env : LspCn.cerb_env) =
       in
       let _id = notify_back#send_request req handle in
       return ()
+
+    (** "Register" for a given client capability *)
+    method register_capability
+      ~(notify_back : Rpc.notify_back)
+      ~(method_ : string)
+      ?(registerOptions : Json.t option)
+      ()
+      : unit IO.t =
+      let open IO in
+      let registration = Registration.create ~id:method_ ~method_ ?registerOptions () in
+      let params = RegistrationParams.create ~registrations:[ registration ] in
+      let req = SReq.ClientRegisterCapability params in
+      let handle response =
+        match response with
+        | Ok _ ->
+          Log.d (sprintf "successfully registered method '%s'" method_);
+          return ()
+        | Error e ->
+          Log.e
+            (sprintf
+               "failed to register method '%s': %s"
+               method_
+               (Json.to_string (Jsonrpc.Response.Error.yojson_of_t e)));
+          return ()
+      in
+      let _id = notify_back#send_request req handle in
+      return ()
+
+    (** Ask the client to send a [workspace/didChangeConfiguration] notification
+        when the configuration changes *)
+    method register_did_change_configuration (notify_back : Rpc.notify_back) : unit IO.t =
+      let method_ = "workspace/didChangeConfiguration" in
+      let registerOptions =
+        ConfigurationItem.(yojson_of_t (create ~section:Config.section ()))
+      in
+      self#register_capability ~notify_back ~method_ ~registerOptions ()
 
     method run_cn (notify_back : Rpc.notify_back) (uri : DocumentUri.t) : unit IO.t =
       let open IO in
