@@ -117,6 +117,10 @@ class lsp_server (env : LspCn.cerb_env) =
       let open IO in
       match notif with
       | CNotif.Initialized -> self#on_notif_initialized notify_back
+      | CNotif.ChangeConfiguration params ->
+        let config_section = params.settings |> Json.Util.member Config.section in
+        let () = self#set_configuration config_section in
+        return ()
       | _ ->
         let s =
           Json.to_string (Jsonrpc.Notification.yojson_of_t (CNotif.to_jsonrpc notif))
