@@ -34,6 +34,10 @@ module Config = struct
   (** The client controls these options, and sends them at a server's request *)
   type t = { run_CN_on_save : bool }
 
+  (** The name of the configuration "section" the client uses to identify
+      CN-specific settings *)
+  let section : string = "CN"
+
   let default : t = { run_CN_on_save = false }
 
   let t_of_yojson (json : Json.t) : t option =
@@ -161,7 +165,7 @@ class lsp_server (env : LspCn.cerb_env) =
         of it to match *)
     method fetch_configuration (notify_back : Rpc.notify_back) : unit IO.t =
       let open IO in
-      let section = ConfigurationItem.create ~section:"CN" () in
+      let section = ConfigurationItem.create ~section:Config.section () in
       let params = ConfigurationParams.create ~items:[ section ] in
       let req = SReq.WorkspaceConfiguration params in
       let handle (response : (Json.t list, Jsonrpc.Response.Error.t) result) : unit IO.t =
