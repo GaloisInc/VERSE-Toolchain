@@ -52,7 +52,7 @@ let parse_arguments () : options =
 let main () : unit =
   let options = parse_arguments () in
   log_setup options.log_path;
-  Server.run options.pipe_path
+  Server.run ~socket_path:options.pipe_path
 ;;
 
 let () = main ()
