@@ -66,8 +66,18 @@ Consequently, I do not propose implementing hover support for loops.
 ## CN Elements
 
 As far as I can tell, the best candidate for a hover interaction to show
-resource evolution is an `extract` stanza. As with C elements, if there are
-others, we should consider them.
+resource evolution is a `lemma`, though I also consider `extract` stanzas below.
+
+### `lemma`s
+
+CN offers lemmas as a method of proving specifications correct outside of C
+itself, e.g. in Coq. For the purposes of this design, lemmas are highly similar
+to CN-specified C functions - they define a spec, which contains `requires` and
+`ensures` clauses documenting their resource consumption and production, and are
+applied via CN stanza (`apply`) in a C function to evolve the resource state.
+Given these similarities to functions, they naturally support a similar
+hover-based workflow.
+
 
 ### `extract`
 
