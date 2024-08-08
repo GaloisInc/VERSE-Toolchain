@@ -21,6 +21,13 @@ elements to display the resources the element expects to produce and/or consume.
 This is akin to showing types and/or docstrings on hover, a feature common to
 many IDE language integrations.
 
+Note that an element's resource signature is generally a subset of its broader
+specification, which may also include e.g. constraints. With experience, we may
+find it equally or more appropriate to display a full specification instead of
+filtering out its resource behavior. This document's determinations, about which
+elements should support resource display, ought to be identical if retargeted to
+full specification display.
+
 
 ## C Elements
 
