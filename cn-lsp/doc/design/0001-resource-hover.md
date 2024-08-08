@@ -1,8 +1,9 @@
 # Show Produced/Consumed Resources on Hover
 
 Resources are one of CN's basic verification building blocks. CN reasons about
-memory accesses by analyzing the production and consumption of "resources", a
-concept amounting to permission to read or write to a memory handle. See [the
+memory accesses by analyzing the production and consumption of "resources".
+Resources amount to permissions writ large, and though they currently amount to
+permissions to read or write to a memory handle specifically. See [the
 tutorial](https://rems-project.github.io/cn-tutorial/#_pointers_and_simple_ownership)
 for more details.
 
