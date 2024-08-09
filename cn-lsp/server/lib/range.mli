@@ -3,6 +3,7 @@ open Base
 type t = Lsp.Types.Range.t
 
 val create : start:Position.t -> end_:Position.t -> t
+val eq : t -> t -> bool
 val to_string : t -> string
 
 (** Convenience notation: [(begin_line, begin_char) |--| (end_line, end_char)] *)

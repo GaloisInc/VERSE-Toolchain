@@ -6,6 +6,10 @@ let create ~(start : Position.t) ~(end_ : Position.t) : t =
   Lsp.Types.Range.create ~start ~end_
 ;;
 
+let eq (r1 : t) (r2 : t) : bool =
+  Position.eq r1.start r2.start && Position.eq r1.end_ r2.end_
+;;
+
 let to_string (range : t) : string =
   Printf.sprintf "%s-%s" (Position.to_string range.start) (Position.to_string range.end_)
 ;;
