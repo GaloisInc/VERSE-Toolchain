@@ -6,8 +6,8 @@ module CF = Cerb_frontend
 module CG = Cerb_global
 
 (* LSP *)
-module LspDiagnostic = Lsp.Types.Diagnostic
-module LspDocumentUri = Lsp.Types.DocumentUri
+module Diagnostic = Lsp.Types.Diagnostic
+module DocumentUri = Lsp.Types.DocumentUri
 
 module CerbM = struct
   type error = CF.Errors.error
@@ -40,15 +40,13 @@ module Cerb = struct
 
   let error_to_string ((loc, cause) : error) : string = CF.Pp_errors.to_string (loc, cause)
 
-  let error_to_diagnostic ((loc, cause) : error)
-    : (LspDocumentUri.t * LspDiagnostic.t) option
-    =
+  let error_to_diagnostic ((loc, cause) : error) : (DocumentUri.t * Diagnostic.t) option =
     let message = error_to_string (loc, cause) in
     let source = "Cerberus" in
     match loc_to_source_range loc with
     | None -> None
     | Some (path, range) ->
-      Some (LspDocumentUri.of_path path, LspDiagnostic.create ~message ~range ~source ())
+      Some (DocumentUri.of_path path, Diagnostic.create ~message ~range ~source ())
   ;;
 
   type conf = CB.Pipeline.configuration
@@ -148,7 +146,7 @@ let error_to_string (err : error) : string =
 ;;
 
 (** Convert an error to an LSP diagnostic and the URI to which it applies *)
-let error_to_diagnostic (err : error) : (LspDocumentUri.t * LspDiagnostic.t) option =
+let error_to_diagnostic (err : error) : (DocumentUri.t * Diagnostic.t) option =
   match err with
   | CerbError (loc, cause) -> Cerb.error_to_diagnostic (loc, cause)
   | CnError e ->
@@ -163,11 +161,11 @@ let error_to_diagnostic (err : error) : (LspDocumentUri.t * LspDiagnostic.t) opt
     (match Cerb.loc_to_source_range e.loc with
      | None -> None
      | Some (path, range) ->
-       Some (LspDocumentUri.of_path path, LspDiagnostic.create ~message ~range ~source ()))
+       Some (DocumentUri.of_path path, Diagnostic.create ~message ~range ~source ()))
 ;;
 
 let errors_to_diagnostics (errs : error list)
-  : (LspDocumentUri.t, LspDiagnostic.t list) Hashtbl.t
+  : (DocumentUri.t, Diagnostic.t list) Hashtbl.t
   =
   let diags = Hashtbl.create (module Uri) in
   let add err =
@@ -197,10 +195,10 @@ let lift_cn (x : 'a CnM.m) : ('a, error) Result.t =
 
 let setup () : cerb_env m = lift_cerb (Cerb.setup ())
 
-let run_cn (cerb_env : cerb_env) (uri : LspDocumentUri.t) : error list m =
+let run_cn (cerb_env : cerb_env) (uri : DocumentUri.t) : error list m =
   (* CLI flag? *)
   let inherit_loc : bool = true in
-  let path = LspDocumentUri.to_path uri in
+  let path = DocumentUri.to_path uri in
   let* prog, (markers_env, ail_prog), _statement_locs =
     lift_cerb (Cerb.frontend cerb_env path)
   in
