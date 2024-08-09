@@ -6,10 +6,8 @@ module CF = Cerb_frontend
 module CG = Cerb_global
 
 (* LSP *)
-module LspDocumentUri = Lsp.Types.DocumentUri
-module LspPosition = Lsp.Types.Position
-module LspRange = Lsp.Types.Range
 module LspDiagnostic = Lsp.Types.Diagnostic
+module LspDocumentUri = Lsp.Types.DocumentUri
 
 module CerbM = struct
   type error = CF.Errors.error
@@ -28,21 +26,16 @@ end
 module Cerb = struct
   open CerbM
 
-  let loc_to_source_range (loc : Cerb_location.t) : (string * LspRange.t) option =
-    let posn_to_lsp (p : Lexing.position) : LspPosition.t =
-      LspPosition.create ~line:(p.pos_lnum - 1) ~character:(p.pos_cnum - p.pos_bol)
+  let loc_to_source_range (loc : Cerb_location.t) : (string * Range.t) option =
+    let path_opt =
+      match Cn.Locations.start_pos loc, Cn.Locations.end_pos loc with
+      | Some pos, _ | _, Some pos -> Some pos.pos_fname
+      | _ -> None
     in
-    match Cn.Locations.start_pos loc, Cn.Locations.end_pos loc with
-    | Some start, Some end_ ->
-      (* TODO: handle when start and end have different filenames? *)
-      let path = start.pos_fname in
-      let range = LspRange.create ~start:(posn_to_lsp start) ~end_:(posn_to_lsp end_) in
-      Some (path, range)
-    | Some pos, None | None, Some pos ->
-      let path = pos.pos_fname in
-      let range = LspRange.create ~start:(posn_to_lsp pos) ~end_:(posn_to_lsp pos) in
-      Some (path, range)
-    | None, None -> None
+    let range_opt = Range.of_cerb_loc loc in
+    match path_opt, range_opt with
+    | Some path, Some range -> Some (path, range)
+    | _ -> None
   ;;
 
   let error_to_string ((loc, cause) : error) : string = CF.Pp_errors.to_string (loc, cause)
