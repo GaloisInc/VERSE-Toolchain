@@ -6,6 +6,8 @@ description: "A language server protocol implementation for the CN language"
 maintainer: "Sam Cowger"
 authors: "Sam Cowger"
 depends: [
+  "alcotest" {= "1.7.0"}
+  "astring" {= "0.8.5"}
   "base" {= "v0.16.3"}
   "base-bigarray" {= "base"}
   "base-bytes" {= "base"}
@@ -46,6 +48,7 @@ depends: [
   "ocaml-compiler-libs" {= "v0.12.4"}
   "ocaml-config" {= "2"}
   "ocaml-options-vanilla" {= "1"}
+  "ocaml-syntax-shims" {= "1.0.0"}
   "ocamlbuild" {= "0.15.0"}
   "ocamlfind" {= "1.9.6"}
   "ocamlgraph" {= "2.1.0"}
@@ -57,6 +60,7 @@ depends: [
   "ppx_sexp_conv" {= "v0.16.0"}
   "ppx_yojson_conv_lib" {= "v0.16.0"}
   "ppxlib" {= "0.32.1"}
+  "re" {= "1.11.0"}
   "result" {= "1.5"}
   "seq" {= "base"}
   "sexplib" {= "v0.16.0"}
