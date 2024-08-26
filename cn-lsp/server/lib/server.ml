@@ -206,7 +206,8 @@ class lsp_server (env : LspCn.cerb_env) =
       | Error msg ->
         let () = Log.d msg in
         return None
-      | Ok (`Spec spec) ->
+      | Ok spec ->
+        let spec = Spec.to_string spec in
         let () = Log.d spec in
         let spec' = String.concat ~sep:"\n" [ "```c"; spec; "```" ] in
         let markup_content =

@@ -4,7 +4,6 @@ module CF = Cerb_frontend
 module Cabs = Cerb_frontend.Cabs
 
 type loc = Cerb_location.t
-type spec = [ `Spec of string ]
 
 let sprintf = Printf.sprintf
 
@@ -19,11 +18,11 @@ let ident_to_string (`Ident ident : ident) : string = sprintf "Ident(%s)" ident
 (** An identifier and the spec that applies to it, if any *)
 type ident_info =
   { ident : ident
-  ; spec : spec option
+  ; spec : Spec.t option
   }
 
 module Scope = struct
-  type t = { global : (string, Uri.t * Range.t * spec option) Hashtbl.t }
+  type t = { global : (string, Uri.t * Range.t * Spec.t option) Hashtbl.t }
 
   let create () : t = { global = Hashtbl.create (module String) }
 
@@ -32,7 +31,7 @@ module Scope = struct
     (`Ident ident : ident)
     (uri : Uri.t)
     (range : Range.t)
-    (spec : spec option)
+    (spec : Spec.t option)
     : t
     =
     let () = Hashtbl.set scope.global ~key:ident ~data:(uri, range, spec) in
@@ -40,7 +39,7 @@ module Scope = struct
   ;;
 
   let find_ident (scope : t) (`Ident ident : ident)
-    : (Uri.t * Range.t * spec option) option
+    : (Uri.t * Range.t * Spec.t option) option
     =
     Hashtbl.find scope.global ident
   ;;
@@ -97,7 +96,7 @@ let create_document (uri : Uri.t) : document =
   { scope = Scope.create (); current_file = uri; locations = Hashtbl.create (module Uri) }
 ;;
 
-let add_global (doc : document) (ident : ident) (range : Range.t) (spec : spec option)
+let add_global (doc : document) (ident : ident) (range : Range.t) (spec : Spec.t option)
   : document
   =
   let scope' = Scope.add_global doc.scope ident doc.current_file range spec in
@@ -108,7 +107,7 @@ let remember_ident_location
   (doc : document)
   (range : Range.t)
   (ident : string)
-  (spec : spec option)
+  (spec : Spec.t option)
   : document
   =
   let ident = `Ident ident in
@@ -121,18 +120,19 @@ let locations (document : document) : (Uri.t, (Range.t * ident_info) list) Hasht
   document.locations
 ;;
 
-let rec attributes_to_spec (attributes : CF.Annot.attributes) : spec option =
+let rec attributes_to_spec (attributes : CF.Annot.attributes) : Spec.t option =
   let () = Log.d "attributes_to_spec" in
   match attributes with
   | CF.Annot.Attrs [ attr ] -> attribute_to_spec attr
   | CF.Annot.Attrs _ -> None
 
-and attribute_to_spec (attribute : CF.Annot.attribute) : spec option =
+and attribute_to_spec (attribute : CF.Annot.attribute) : Spec.t option =
   let () = Log.d "attribute_to_spec" in
   match attribute.attr_id with
   | Identifier (_, "magic") ->
     Some
-      (`Spec (String.concat ~sep:"\n" (List.map attribute.attr_args ~f:attr_arg_to_spec)))
+      (Spec.of_string
+         (String.concat ~sep:"\n" (List.map attribute.attr_args ~f:attr_arg_to_spec)))
   | _ -> None
 
 and attr_arg_to_spec ((_loc, str, _other) : loc * string * (loc * string) list) : string =
