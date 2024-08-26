@@ -21,11 +21,11 @@
     (< 6.0.0)))
   ;;
   (cerberus
-   (= "281cfc42f"))
+   (= "f1f118b26"))
   (cerberus-lib
-   (= "281cfc42f"))
+   (= "f1f118b26"))
   (cn
-   (= "281cfc42f"))
+   (= "f1f118b26"))
   (jsonrpc
    (and
     (>= 1.17.0)

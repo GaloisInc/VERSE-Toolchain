@@ -7,9 +7,9 @@ authors: ["Sam Cowger"]
 depends: [
   "dune" {>= "3.12"}
   "ocaml" {>= "4.14.1" & < "6.0.0"}
-  "cerberus" {= "281cfc42f"}
-  "cerberus-lib" {= "281cfc42f"}
-  "cn" {= "281cfc42f"}
+  "cerberus" {= "f1f118b26"}
+  "cerberus-lib" {= "f1f118b26"}
+  "cn" {= "f1f118b26"}
   "jsonrpc" {>= "1.17.0" & < "2.0.0"}
   "linol" {>= "0.6" & < "1.0"}
   "linol-lwt" {>= "0.6" & < "1.0"}
@@ -33,12 +33,12 @@ build: [
 ]
 pin-depends: [
   [
-    "cerberus.281cfc42f"
-    "git+ssh://git@github.com/rems-project/cerberus.git#281cfc42f"
+    "cerberus.f1f118b26"
+    "git+ssh://git@github.com/rems-project/cerberus.git#f1f118b26"
   ]
   [
-    "cerberus-lib.281cfc42f"
-    "git+ssh://git@github.com/rems-project/cerberus.git#281cfc42f"
+    "cerberus-lib.f1f118b26"
+    "git+ssh://git@github.com/rems-project/cerberus.git#f1f118b26"
   ]
-  ["cn.281cfc42f" "git+ssh://git@github.com/rems-project/cerberus.git#281cfc42f"]
+  ["cn.f1f118b26" "git+ssh://git@github.com/rems-project/cerberus.git#f1f118b26"]
 ]
