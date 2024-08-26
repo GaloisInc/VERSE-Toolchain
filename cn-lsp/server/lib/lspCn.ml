@@ -9,6 +9,15 @@ module CG = Cerb_global
 module Diagnostic = Lsp.Types.Diagnostic
 module DocumentUri = Lsp.Types.DocumentUri
 
+let located_diagnostic (source : string) (loc : Cerb_location.t) (message : string)
+  : (DocumentUri.t * Diagnostic.t) option
+  =
+  match Cerb_location.get_filename loc, Range.of_cerb_loc loc with
+  | Some path, Some range ->
+    Some (DocumentUri.of_path path, Diagnostic.create ~message ~range ~source ())
+  | _ -> None
+;;
+
 module CerbM = struct
   type error = CF.Errors.error
   type 'a m = ('a, error) CF.Exception.exceptM
@@ -26,27 +35,12 @@ end
 module Cerb = struct
   open CerbM
 
-  let loc_to_source_range (loc : Cerb_location.t) : (string * Range.t) option =
-    let path_opt =
-      match Cn.Locations.start_pos loc, Cn.Locations.end_pos loc with
-      | Some pos, _ | _, Some pos -> Some pos.pos_fname
-      | _ -> None
-    in
-    let range_opt = Range.of_cerb_loc loc in
-    match path_opt, range_opt with
-    | Some path, Some range -> Some (path, range)
-    | _ -> None
-  ;;
-
   let error_to_string ((loc, cause) : error) : string = CF.Pp_errors.to_string (loc, cause)
 
   let error_to_diagnostic ((loc, cause) : error) : (DocumentUri.t * Diagnostic.t) option =
     let message = error_to_string (loc, cause) in
     let source = "Cerberus" in
-    match loc_to_source_range loc with
-    | None -> None
-    | Some (path, range) ->
-      Some (DocumentUri.of_path path, Diagnostic.create ~message ~range ~source ())
+    located_diagnostic source loc message
   ;;
 
   type conf = CB.Pipeline.configuration
@@ -158,10 +152,7 @@ let error_to_diagnostic (err : error) : (DocumentUri.t * Diagnostic.t) option =
       | Some d -> short ^ "\n" ^ Cn.Pp.plain d
     in
     let source = "CN" in
-    (match Cerb.loc_to_source_range e.loc with
-     | None -> None
-     | Some (path, range) ->
-       Some (DocumentUri.of_path path, Diagnostic.create ~message ~range ~source ()))
+    located_diagnostic source e.loc message
 ;;
 
 let errors_to_diagnostics (errs : error list)
