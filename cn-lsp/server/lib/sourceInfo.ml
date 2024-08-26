@@ -37,6 +37,8 @@ let info_at (doc_info : document_info) (posn : Position.t) : ident_info option =
 
 type t = (DocumentUri.t, document_info) Hashtbl.t
 
+let document (map : t) (uri : DocumentUri.t) : document_info option = Hashtbl.find map uri
+
 let from_source (uri : DocumentUri.t) (source : string) : (t, string) Result.t =
   match Document.parse_document_source uri source with
   | Error e -> Error e
@@ -53,4 +55,14 @@ let from_file (uri : DocumentUri.t) : (t, string) Result.t =
     let doc = Document.process_external_declarations uri decls in
     let locs = Document.locations doc in
     Ok (Hashtbl.map locs ~f:from_list)
+;;
+
+let merge (a : t) (b : t) : t =
+  let f ~key:(_ : DocumentUri.t) join =
+    match join with
+    | `Left l -> Some l
+    | `Right r -> Some r
+    | `Both (l, _r) -> Some l
+  in
+  Hashtbl.merge a b ~f
 ;;

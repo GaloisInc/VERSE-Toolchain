@@ -1,9 +1,14 @@
 open Base
+module CF = Cerb_frontend
 module Json = Yojson.Safe
 
 (* Linol *)
 module Rpc = Linol_lwt.Jsonrpc2
 module IO = Rpc.IO
+module MarkupContent = Linol_lwt.MarkupContent
+module MarkupKind = Linol_lwt.MarkupKind
+module Hover = Linol_lwt.Hover
+module ProgressToken = Linol_lwt.ProgressToken
 
 (* LSP Types *)
 module CNotif = Lsp.Client_notification
@@ -59,6 +64,7 @@ class lsp_server (env : LspCn.cerb_env) =
   object (self)
     val env : LspCn.cerb_env = env
     val mutable server_config : Config.t = Config.default
+    val mutable source_info : SourceInfo.t option = None
     inherit Rpc.server
 
     (* Required *)
@@ -73,8 +79,19 @@ class lsp_server (env : LspCn.cerb_env) =
       (doc : TextDocumentItem.t)
       ~content:(_ : string)
       : unit IO.t =
-      let msg = "Opened document: " ^ DocumentUri.to_string doc.uri in
-      let () = Log.d msg in
+      let () =
+        match source_info, SourceInfo.from_file doc.uri with
+        | _, Error e ->
+          let () = Log.e (sprintf "Failed to process document: %s" e) in
+          ()
+        | None, Ok info ->
+          let () = Log.d "Initializing location maps" in
+          source_info <- Some info
+        | Some existing_info, Ok new_info ->
+          let () = Log.d "Updating location maps" in
+          let info = SourceInfo.merge existing_info new_info in
+          source_info <- Some info
+      in
       IO.return ()
 
     (* Required *)
@@ -155,6 +172,50 @@ class lsp_server (env : LspCn.cerb_env) =
 
     (***************************************************************)
     (***  Other  ***************************************************)
+    method config_hover = Some (`Bool true)
+
+    method on_req_hover
+      ~notify_back:(_ : Rpc.notify_back)
+      ~id:(_ : Jsonrpc.Id.t)
+      ~(uri : DocumentUri.t)
+      ~(pos : Position.t)
+      ~workDoneToken:(_ : ProgressToken.t option)
+      (_ : Rpc.doc_state)
+      : Hover.t option IO.t =
+      let open IO in
+      let spec_res =
+        match source_info with
+        | None -> Error "No location maps present"
+        | Some info ->
+          (match SourceInfo.document info uri with
+           | None ->
+             Error (sprintf "No location map for document '%s'" (DocumentUri.to_path uri))
+           | Some doc_info ->
+             (match SourceInfo.info_at doc_info pos with
+              | None -> Error (sprintf "No identifier at %s" (Position.to_string pos))
+              | Some info ->
+                (match info.spec with
+                 | None ->
+                   Error
+                     (sprintf
+                        "No spec for identifier %s"
+                        (Document.ident_to_string info.ident))
+                 | Some spec -> Ok spec)))
+      in
+      match spec_res with
+      | Error msg ->
+        let () = Log.d msg in
+        return None
+      | Ok (`Spec spec) ->
+        let () = Log.d spec in
+        let spec' = String.concat ~sep:"\n" [ "```c"; spec; "```" ] in
+        let markup_content =
+          MarkupContent.create ~kind:MarkupKind.Markdown ~value:spec'
+        in
+        let contents = `MarkupContent markup_content in
+        let range = None in
+        let sample = Hover.create ~contents ?range () in
+        return (Some sample)
 
     (** Set the server's configuration to the provided, JSON-encoded
         configuration *)

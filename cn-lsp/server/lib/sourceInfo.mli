@@ -9,3 +9,5 @@ type t
 
 val from_source : Lsp.Types.DocumentUri.t -> string -> (t, string) result
 val from_file : Lsp.Types.DocumentUri.t -> (t, string) result
+val document : t -> Lsp.Types.DocumentUri.t -> document_info option
+val merge : t -> t -> t

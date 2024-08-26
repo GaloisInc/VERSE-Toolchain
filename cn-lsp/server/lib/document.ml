@@ -14,6 +14,8 @@ let uri_of_loc (loc : loc) : Uri.t option =
 
 type ident = [ `Ident of string ]
 
+let ident_to_string (`Ident ident : ident) : string = sprintf "Ident(%s)" ident
+
 (** An identifier and the spec that applies to it, if any *)
 type ident_info =
   { ident : ident
