@@ -115,6 +115,10 @@ let remember_ident_location
   doc
 ;;
 
+let locations (document : document) : (Uri.t, (Range.t * ident_info) list) Hashtbl.t =
+  document.locations
+;;
+
 let rec attributes_to_spec (attributes : CF.Annot.attributes) : spec option =
   let () = Log.d "attributes_to_spec" in
   match attributes with
