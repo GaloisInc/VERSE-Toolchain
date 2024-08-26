@@ -235,7 +235,15 @@ class lsp_server (env : LspCn.cerb_env) =
     method run_cn (notify_back : Rpc.notify_back) (uri : DocumentUri.t) : unit IO.t =
       let open IO in
       match LspCn.(run (run_cn env uri)) with
-      | Ok () -> cinfo notify_back "No issues found"
+      | Ok [] -> cinfo notify_back "No issues found"
+      | Ok errs ->
+        let diagnostics =
+          Hashtbl.fold
+            (fun uri diag diags -> (uri, diag) :: diags)
+            (LspCn.errors_to_diagnostics errs)
+            []
+        in
+        self#publish_all notify_back diagnostics
       | Error err ->
         (match LspCn.error_to_diagnostic err with
          | None ->
@@ -267,6 +275,17 @@ class lsp_server (env : LspCn.cerb_env) =
         in
         let params = PublishDiagnosticsParams.create ~uri ?version ~diagnostics:ds () in
         notify_back#send_notification (Lsp.Server_notification.PublishDiagnostics params)
+
+    method publish_all
+      (notify_back : Rpc.notify_back)
+      (diags : (DocumentUri.t * Diagnostic.t list) list)
+      : unit IO.t =
+      let open IO in
+      match diags with
+      | [] -> return ()
+      | (uri, ds) :: rest ->
+        let* () = self#publish_diagnostics_for notify_back uri ds in
+        self#publish_all notify_back rest
   end [@@warning "-7"]
 (*
    Warning 7 tells us that a method has been overridden. We disable it because

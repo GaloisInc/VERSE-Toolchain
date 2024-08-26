@@ -171,6 +171,26 @@ let error_to_diagnostic (err : error) : (LspDocumentUri.t * LspDiagnostic.t) opt
        Some (LspDocumentUri.of_path path, LspDiagnostic.create ~message ~range ~source ()))
 ;;
 
+let update (f : 'v option -> 'v) (key : 'k) (tbl : ('k, 'v) Hashtbl.t) : unit =
+  match Hashtbl.find_opt tbl key with
+  | None -> Hashtbl.add tbl key (f None)
+  | Some value -> Hashtbl.replace tbl key (f (Some value))
+;;
+
+let errors_to_diagnostics (errs : error list)
+  : (LspDocumentUri.t, LspDiagnostic.t list) Hashtbl.t
+  =
+  let diags = Hashtbl.create (List.length errs) in
+  let add err =
+    match error_to_diagnostic err with
+    | None -> ()
+    | Some (uri, diag) ->
+      update (Option.fold ~none:[ diag ] ~some:(fun ds -> diag :: ds)) uri diags
+  in
+  let () = List.iter add errs in
+  diags
+;;
+
 type 'a m = ('a, error) result
 
 let ( let* ) (a : 'a m) (f : 'a -> 'b m) : 'b m = Result.bind a f
@@ -189,23 +209,26 @@ let lift_cn (x : 'a CnM.m) : ('a, error) result =
 
 let setup () : cerb_env m = lift_cerb (Cerb.setup ())
 
-let run_cn (cerb_env : cerb_env) (uri : LspDocumentUri.t) : unit m =
-  (* CLI flag? *)
-  let lemmata : string option = None in
+let run_cn (cerb_env : cerb_env) (uri : LspDocumentUri.t) : error list m =
   (* CLI flag? *)
   let inherit_loc : bool = true in
   let path = LspDocumentUri.to_path uri in
   let* prog, (markers_env, ail_prog), _statement_locs =
     lift_cerb (Cerb.frontend cerb_env path)
   in
-  lift_cn
-    CnM.(
-      let* prog' =
-        Cn.Core_to_mucore.normalise_file ~inherit_loc (markers_env, ail_prog) prog
-      in
-      Cn.Typing.(
-        run
-          Cn.Context.empty
-          (let@ wellformedness_result = Cn.Check.check_decls_lemmata_fun_specs prog' in
-           Cn.Check.check wellformedness_result lemmata)))
+  let* errors =
+    lift_cn
+      CnM.(
+        let* prog' =
+          Cn.Core_to_mucore.normalise_file ~inherit_loc (markers_env, ail_prog) prog
+        in
+        Cn.Typing.(
+          run
+            Cn.Context.empty
+            (let@ wellformedness_result, _ =
+               Cn.Check.check_decls_lemmata_fun_specs prog'
+             in
+             Cn.Check.check_c_functions_all wellformedness_result)))
+  in
+  return (List.map (fun (_fn, e) -> CnError e) errors)
 ;;
