@@ -8,18 +8,12 @@ type document_info = ident_info ITree.t
    tree when the document changes - either modifying its actual contents, or
    including some sort of temporary shim that we apply to locations on lookup *)
 
-let empty : document_info = ITree.empty
-
 let from_list (elements : (Range.t * ident_info) list) : document_info =
   ITree.from_list elements
 ;;
 
 let to_list (doc_info : document_info) : (Range.t * ident_info) list =
   ITree.to_list doc_info
-;;
-
-let insert (range : Range.t) (info : ident_info) (loc_map : document_info) =
-  ITree.insert range info loc_map
 ;;
 
 let info_at (doc_info : document_info) (posn : Position.t) : ident_info option =

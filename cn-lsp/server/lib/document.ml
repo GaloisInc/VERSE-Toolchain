@@ -113,47 +113,6 @@ module Scope = struct
     Hashtbl.find scope.global ident
   ;;
 end
-(*
-   module Locations = struct
-  type t =
-    { current_file : uri
-    ; current_locations : (Range.t * LocMap.info) list
-    ; past_locations : (uri, (Range.t * LocMap.info) list) Hashtbl.t
-    }
-
-  let create (uri : uri) : t =
-    { current_file = uri; current_locations = []; past_locations = Hashtbl.create 64 }
-  ;;
-
-  (** In [past_locations], map [current_file] to all [current_locations] (as
-      well as whatever locations [current_file] already mapped to). *)
-  let reconcile_locations (locs : t) : unit =
-    Hashtbl.add_with
-      (fun ~new_ ~old -> List.append new_ old)
-      locs.current_file
-      locs.current_locations
-      locs.past_locations
-  ;;
-
-  (** In the document at [uri], remember that [range] contains [ident], along with
-      its associated [spec]. *)
-  let remember_ident_location
-    (locs : t)
-    (uri : uri)
-    (range : Range.t)
-    (ident : string)
-    (spec : spec option)
-    : t
-    =
-    let loc_info = LocMap.ident_info ident spec in
-    (* Is this equality check expensive? *)
-    if DocumentUri.equal uri locs.current_file
-    then { locs with current_locations = (range, loc_info) :: locs.current_locations }
-    else (
-      let () = reconcile_locations locs in
-      { locs with current_file = uri; current_locations = [ range, loc_info ] })
-  ;;
-end *)
 
 type document =
   { scope : Scope.t
@@ -531,44 +490,6 @@ let read_process (cmd : string) (args : string array) : (proc_out, string) Resul
       Ok { exit_code; stdout = out; stderr = err }
   with
   | Unix.Unix_error (err, fn, _param) -> Error (Unix.error_message err ^ ": " ^ fn)
-;;
-
-let read_process_with_input (cmd : string) (args : string array) (input : string)
-  : (proc_out, string) Result.t
-  =
-  (* Could probably deduplicate this and `read_process` somewhat *)
-  try
-    let in_read, in_write = Unix.pipe () in
-    let out_read, out_write = Unix.pipe () in
-    let err_read, err_write = Unix.pipe () in
-    Unix.set_close_on_exec in_write;
-    Unix.set_close_on_exec out_read;
-    Unix.set_close_on_exec err_read;
-    let in_oc = Unix.out_channel_of_descr in_write in
-    let out_ic = Unix.in_channel_of_descr out_read in
-    let err_ic = Unix.in_channel_of_descr err_read in
-    Out_channel.output_string in_oc input;
-    Stdlib.flush in_oc;
-    let pid = Unix.create_process cmd args in_read out_write err_write in
-    Stdlib.close_out in_oc;
-    Unix.close in_read;
-    Unix.close out_write;
-    Unix.close err_write;
-    Stdlib.flush_all ();
-    let out = In_channel.input_all out_ic in
-    let err = In_channel.input_all err_ic in
-    Stdlib.close_in out_ic;
-    Stdlib.close_in err_ic;
-    match Unix.waitpid [] pid with
-    | _, WEXITED exit_code | _, WSIGNALED exit_code | _, WSTOPPED exit_code ->
-      Ok { exit_code; stdout = out; stderr = err }
-  with
-  | Unix.Unix_error (err, fn, _param) -> Error (Unix.error_message err ^ ": " ^ fn)
-;;
-
-let preprocess_source (source : string) : (proc_out, string) Result.t =
-  let args = Array.of_list (c_preprocessor_arguments @ [ "-" ]) in
-  read_process_with_input c_preprocessor args source
 ;;
 
 let preprocess_file (uri : Uri.t) : (proc_out, string) Result.t =
