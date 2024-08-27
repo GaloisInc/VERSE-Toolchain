@@ -1,3 +1,5 @@
+open! Base
+
 (** A CN error. *)
 type error
 
@@ -27,7 +29,7 @@ val ( let* ) : 'a m -> ('a -> 'b m) -> 'b m
 val return : 'a -> 'a m
 
 (** Run the CN monad. *)
-val run : 'a m -> ('a, error) result
+val run : 'a m -> ('a, error) Result.t
 
 (** A reusable "environment" needed to run CN. *)
 type cerb_env

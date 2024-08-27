@@ -1,3 +1,5 @@
+open! Base
+
 let src : Logs.src = Logs.Src.create ~doc:"CN Language Server" "cn-language-server"
 
 include (val Logs.src_log src)

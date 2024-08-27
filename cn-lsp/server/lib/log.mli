@@ -1,3 +1,5 @@
+open! Base
+
 (** Logging *)
 
 (** General-purpose logger at Debug *)

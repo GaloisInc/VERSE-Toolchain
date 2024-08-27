@@ -1,3 +1,5 @@
+open! Base
+
 (* Cerberus *)
 module CB = Cerb_backend
 module CF = Cerb_frontend
@@ -16,7 +18,7 @@ module CerbM = struct
   let ( let* ) (a : 'a m) (f : 'a -> 'b m) : 'b m = CF.Exception.except_bind a f
   let return (a : 'a) : 'a m = CF.Exception.except_return a
 
-  let run (x : 'a m) : ('a, error) result =
+  let run (x : 'a m) : ('a, error) Result.t =
     match x with
     | CF.Exception.Exception (loc, cause) -> Error (loc, cause)
     | CF.Exception.Result r -> Ok r
@@ -111,7 +113,7 @@ module Cerb = struct
         return ()
       else return ()
     in
-    let markers_env, (_, ail_prog) = Option.get ail_prog_opt in
+    let markers_env, (_, ail_prog) = Option.value_exn ail_prog_opt in
     let () = CF.Tags.set_tagDefs prog0.CF.Core.tagDefs in
     let prog1 = CF.Remove_unspecs.rewrite_file prog0 in
     let prog2 = CF.Milicore.core_to_micore__file Cn.Locations.update prog1 in
@@ -130,7 +132,7 @@ module CnM = struct
   (* No reason in principle not to have `return`, it just hasn't been used so
      far in practice *)
 
-  let run (x : 'a m) : ('a, error) result = x
+  let run (x : 'a m) : ('a, error) Result.t = x
 end
 
 type error =
@@ -143,7 +145,7 @@ let error_to_string (err : error) : string =
   | CnError e ->
     let report = Cn.TypeErrors.pp_message e.msg in
     let short = Cn.Pp.plain report.short in
-    let desc = Option.value (Option.map Cn.Pp.plain report.descr) ~default:"<none>" in
+    let desc = Option.value (Option.map report.descr ~f:Cn.Pp.plain) ~default:"<none>" in
     "CN Error: loc = "
     ^ Cn.Locations.to_string e.loc
     ^ ", short = "
@@ -171,40 +173,33 @@ let error_to_diagnostic (err : error) : (LspDocumentUri.t * LspDiagnostic.t) opt
        Some (LspDocumentUri.of_path path, LspDiagnostic.create ~message ~range ~source ()))
 ;;
 
-let update (f : 'v option -> 'v) (key : 'k) (tbl : ('k, 'v) Hashtbl.t) : unit =
-  match Hashtbl.find_opt tbl key with
-  | None -> Hashtbl.add tbl key (f None)
-  | Some value -> Hashtbl.replace tbl key (f (Some value))
-;;
-
 let errors_to_diagnostics (errs : error list)
   : (LspDocumentUri.t, LspDiagnostic.t list) Hashtbl.t
   =
-  let diags = Hashtbl.create (List.length errs) in
+  let diags = Hashtbl.create (module Uri) in
   let add err =
     match error_to_diagnostic err with
     | None -> ()
-    | Some (uri, diag) ->
-      update (Option.fold ~none:[ diag ] ~some:(fun ds -> diag :: ds)) uri diags
+    | Some (uri, diag) -> Hashtbl.add_multi diags ~key:uri ~data:diag
   in
-  let () = List.iter add errs in
+  List.iter errs ~f:add;
   diags
 ;;
 
-type 'a m = ('a, error) result
+type 'a m = ('a, error) Result.t
 
-let ( let* ) (a : 'a m) (f : 'a -> 'b m) : 'b m = Result.bind a f
+let ( let* ) (a : 'a m) (f : 'a -> 'b m) : 'b m = Result.bind a ~f
 let return (a : 'a) : 'a m = Ok a
-let run (a : 'a m) : ('a, error) result = a
+let run (a : 'a m) : ('a, error) Result.t = a
 
 type cerb_env = Cerb.env
 
 let lift_cerb (x : 'a CerbM.m) : 'a m =
-  Result.map_error (fun (l, c) -> CerbError (l, c)) (CerbM.run x)
+  Result.map_error (CerbM.run x) ~f:(fun (l, c) -> CerbError (l, c))
 ;;
 
-let lift_cn (x : 'a CnM.m) : ('a, error) result =
-  Result.map_error (fun e -> CnError e) (CnM.run x)
+let lift_cn (x : 'a CnM.m) : ('a, error) Result.t =
+  Result.map_error (CnM.run x) ~f:(fun e -> CnError e)
 ;;
 
 let setup () : cerb_env m = lift_cerb (Cerb.setup ())
@@ -230,5 +225,5 @@ let run_cn (cerb_env : cerb_env) (uri : LspDocumentUri.t) : error list m =
              in
              Cn.Check.check_c_functions_all wellformedness_result)))
   in
-  return (List.map (fun (_fn, e) -> CnError e) errors)
+  return (List.map errors ~f:(fun (_fn, e) -> CnError e))
 ;;

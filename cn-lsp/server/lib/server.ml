@@ -1,3 +1,5 @@
+open! Base
+
 module Json = Yojson.Safe
 
 (* Linol *)
@@ -141,7 +143,7 @@ class lsp_server (env : LspCn.cerb_env) =
       let open IO in
       match method_name with
       | "$/runCN" ->
-        let obj = Jsonrpc.Structured.yojson_of_t (Option.get params) in
+        let obj = Jsonrpc.Structured.yojson_of_t (Option.value_exn params) in
         let uri =
           Json.Util.(
             obj |> member "textDocument" |> member "uri" |> DocumentUri.t_of_yojson)
@@ -177,13 +179,14 @@ class lsp_server (env : LspCn.cerb_env) =
       let section = ConfigurationItem.create ~section:Config.section () in
       let params = ConfigurationParams.create ~items:[ section ] in
       let req = SReq.WorkspaceConfiguration params in
-      let handle (response : (Json.t list, Jsonrpc.Response.Error.t) result) : unit IO.t =
+      let handle (response : (Json.t list, Jsonrpc.Response.Error.t) Result.t) : unit IO.t
+        =
         let () =
           match response with
           | Ok [ section ] -> self#set_configuration section
           | Ok [] -> Log.w "No CN config section found"
           | Ok sections ->
-            let ss = String.concat "," (List.map Json.to_string sections) in
+            let ss = String.concat ~sep:"," (List.map sections ~f:Json.to_string) in
             Log.e (sprintf "Too many config sections: [%s]" ss)
           | Error e ->
             Log.e
@@ -237,12 +240,7 @@ class lsp_server (env : LspCn.cerb_env) =
       match LspCn.(run (run_cn env uri)) with
       | Ok [] -> cinfo notify_back "No issues found"
       | Ok errs ->
-        let diagnostics =
-          Hashtbl.fold
-            (fun uri diag diags -> (uri, diag) :: diags)
-            (LspCn.errors_to_diagnostics errs)
-            []
-        in
+        let diagnostics = Hashtbl.to_alist (LspCn.errors_to_diagnostics errs) in
         self#publish_all notify_back diagnostics
       | Error err ->
         (match LspCn.error_to_diagnostic err with
@@ -302,7 +300,7 @@ let run ~(socket_path : string) : unit =
     | Error e ->
       let msg = LspCn.error_to_string e in
       let () = Log.e ("Failed to start: " ^ msg) in
-      exit 1
+      Stdlib.exit 1
   in
   (* We encapsulate the type this way (with `:>`) because our class defines more
      methods than `Rpc.server` specifies *)
@@ -314,7 +312,11 @@ let run ~(socket_path : string) : unit =
     let ic = Lwt_io.of_fd ~mode:Lwt_io.Input sock in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.Output sock in
     let server = Rpc.create ~ic ~oc s in
-    let shutdown () = s#get_status = `ReceivedExit in
+    let shutdown () =
+      match s#get_status with
+      | `ReceivedExit -> true
+      | _ -> false
+    in
     let* () = Rpc.run ~shutdown server in
     let () = Log.d "Shutting down" in
     Lwt_unix.close sock
@@ -322,6 +324,6 @@ let run ~(socket_path : string) : unit =
   match Linol_lwt.run task with
   | () -> ()
   | exception e ->
-    let () = Log.e (Printexc.to_string e) in
-    exit 1
+    let () = Log.e (Exn.to_string e) in
+    Stdlib.exit 1
 ;;
