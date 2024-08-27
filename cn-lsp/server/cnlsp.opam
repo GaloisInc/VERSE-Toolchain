@@ -7,6 +7,7 @@ authors: ["Sam Cowger"]
 depends: [
   "dune" {>= "3.12"}
   "ocaml" {>= "4.14.1" & < "6.0.0"}
+  "base" {>= "v0.16.3" & < "v0.18"}
   "cerberus" {= "f1f118b26"}
   "cerberus-lib" {= "f1f118b26"}
   "cn" {= "f1f118b26"}
