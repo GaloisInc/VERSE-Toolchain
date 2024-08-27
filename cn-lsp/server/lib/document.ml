@@ -217,15 +217,28 @@ and process_cabs_declaration (doc : document) (decl : Cabs.cabs_declaration) : d
 
 and process_init_declarator
   (doc : document)
-  (Cabs.InitDecl (_loc, _decl, init_opt) : Cabs.init_declarator)
+  (Cabs.InitDecl (_loc, decl, init_opt) : Cabs.init_declarator)
   : document
   =
   (* TODO: scope *)
   let () = Log.d "process_init_declarator" in
   match init_opt with
-  | None -> doc
-  | Some (Cabs.Init_expr expr) -> process_cabs_expression doc expr
+  | None -> process_declarator doc decl
+  | Some (Cabs.Init_expr expr) ->
+    (* order? *)
+    process_declarator (process_cabs_expression doc expr) decl
   | Some (Cabs.Init_list _) -> doc
+
+and process_declarator (doc : document) (declarator : Cabs.declarator) : document =
+  let () = Log.d "process_declarator" in
+  let loc, name = declarator_to_located_name declarator in
+  let spec_opt = None in
+  match Range.of_cerb_loc loc with
+  | None -> doc
+  | Some range ->
+    (* we don't actually know that this is a global... *)
+    let doc' = add_global doc (`Ident name) range spec_opt in
+    remember_ident_location doc' range name spec_opt
 
 and process_for_clause (doc : document) (clause : Cabs.for_clause) : document =
   (* TODO: scope *)
@@ -331,9 +344,8 @@ and process_gnu_builtin (doc : document) (builtin : Cabs.gnu_builtin_function) :
   | Cabs.GNUbuiltin_types_compatible_p (_t1, _t2) -> doc
   | Cabs.GNUbuiltin_choose_expr (e1, e2, e3) ->
     List.fold_left [ e1; e2; e3 ] ~init:doc ~f:process_cabs_expression
-;;
 
-let rec declarator_to_located_name (declarator : Cabs.declarator) : loc * string =
+and declarator_to_located_name (declarator : Cabs.declarator) : loc * string =
   match declarator with
   | Cabs.Declarator (_pdecl, ddecl) -> direct_declarator_to_located_name ddecl
 
@@ -377,7 +389,7 @@ let process_external_declaration (doc : document) (decl : Cabs.external_declarat
   match decl with
   | Cabs.EDecl_func function_definition ->
     process_function_definition doc function_definition
-  | Cabs.EDecl_decl _ -> doc
+  | Cabs.EDecl_decl decl -> process_cabs_declaration doc decl
   | Cabs.EDecl_magic _ -> doc
   | Cabs.EDecl_funcCN _ -> doc
   | Cabs.EDecl_lemmaCN _ -> doc
