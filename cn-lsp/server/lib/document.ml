@@ -21,6 +21,75 @@ type ident_info =
   ; spec : Spec.t option
   }
 
+module Location = struct
+  let of_expression (Cabs.CabsExpression (loc, _expr) : Cabs.cabs_expression) : loc = loc
+
+  let of_function_definition (Cabs.FunDef (loc, _, _, _, _) : Cabs.function_definition)
+    : loc
+    =
+    loc
+  ;;
+
+  let of_declaration (decl : Cabs.cabs_declaration) : loc =
+    match decl with
+    | Cabs.Declaration_static_assert (Static_assert (e, _)) -> of_expression e
+    | Cabs.Declaration_base (_attrs, specifiers, _declarators) ->
+      (match specifiers.type_specifiers with
+       | Cabs.TSpec (loc, _) :: _ -> loc
+       (* The standard guarantees at least one type specifier *)
+       | _ -> raise (Failure "C declaration with no type specifier"))
+  ;;
+
+  let of_cn_function
+    (cn_function : (CF.Symbol.identifier, Cabs.type_name) CF.Cn.cn_function)
+    : loc
+    =
+    cn_function.cn_func_magic_loc
+  ;;
+
+  let of_cn_lemma (cn_lemma : (CF.Symbol.identifier, Cabs.type_name) CF.Cn.cn_lemma) : loc
+    =
+    cn_lemma.cn_lemma_magic_loc
+  ;;
+
+  let of_cn_predicate
+    (cn_predicate : (CF.Symbol.identifier, Cabs.type_name) CF.Cn.cn_predicate)
+    : loc
+    =
+    cn_predicate.cn_pred_magic_loc
+  ;;
+
+  let of_cn_datatype (cn_datatype : CF.Symbol.identifier CF.Cn.cn_datatype) : loc =
+    cn_datatype.cn_dt_magic_loc
+  ;;
+
+  let of_cn_type_synonym (cn_type_synonym : CF.Symbol.identifier CF.Cn.cn_type_synonym)
+    : loc
+    =
+    cn_type_synonym.cn_tysyn_magic_loc
+  ;;
+
+  let of_cn_fun_spec
+    (cn_fun_spec : (CF.Symbol.identifier, Cabs.type_name) CF.Cn.cn_fun_spec)
+    : loc
+    =
+    cn_fun_spec.cn_spec_magic_loc
+  ;;
+
+  let of_external_declaration (decl : Cabs.external_declaration) : loc =
+    match decl with
+    | Cabs.EDecl_func function_definition -> of_function_definition function_definition
+    | Cabs.EDecl_decl declaration -> of_declaration declaration
+    | Cabs.EDecl_magic (loc, _) -> loc
+    | Cabs.EDecl_funcCN cn_function -> of_cn_function cn_function
+    | Cabs.EDecl_lemmaCN cn_lemma -> of_cn_lemma cn_lemma
+    | Cabs.EDecl_predCN cn_predicate -> of_cn_predicate cn_predicate
+    | Cabs.EDecl_datatypeCN cn_datatype -> of_cn_datatype cn_datatype
+    | Cabs.EDecl_type_synCN cn_type_synonym -> of_cn_type_synonym cn_type_synonym
+    | Cabs.EDecl_fun_specCN cn_fun_spec -> of_cn_fun_spec cn_fun_spec
+  ;;
+end
+
 module Scope = struct
   type t = { global : (string, Uri.t * Range.t * Spec.t option) Hashtbl.t }
 
@@ -360,43 +429,42 @@ and direct_declarator_to_located_name (declarator : Cabs.direct_declarator) : lo
 
 let process_function_definition
   (doc : document)
-  (Cabs.FunDef (loc, attrs, _specifiers, declarator, stmt) : Cabs.function_definition)
+  (Cabs.FunDef (_loc, attrs, _specifiers, declarator, stmt) : Cabs.function_definition)
   : document
   =
   let () = Log.d "process_function_definition" in
-  let doc' =
-    match uri_of_loc loc with
-    | None -> doc
-    | Some uri when DocumentUri.equal uri doc.current_file -> doc
-    | Some uri -> { doc with current_file = uri }
-  in
   (* Map the identifier to the location/spec *)
   (* Map the location to the spec *)
   let loc, fn_name = declarator_to_located_name declarator in
   let spec = attributes_to_spec attrs in
   match Range.of_cerb_loc loc with
-  | None -> doc'
+  | None -> doc
   | Some range ->
-    let doc'' = add_global doc' (`Ident fn_name) range spec in
-    let doc''' = remember_ident_location doc'' range fn_name spec in
-    process_cabs_statement doc''' stmt
+    let doc' = add_global doc (`Ident fn_name) range spec in
+    let doc'' = remember_ident_location doc' range fn_name spec in
+    process_cabs_statement doc'' stmt
 ;;
 
 let process_external_declaration (doc : document) (decl : Cabs.external_declaration)
   : document
   =
   let () = Log.d "process_external_declaration" in
+  let doc' =
+    match uri_of_loc (Location.of_external_declaration decl) with
+    | None -> doc
+    | Some uri -> { doc with current_file = uri }
+  in
   match decl with
   | Cabs.EDecl_func function_definition ->
-    process_function_definition doc function_definition
-  | Cabs.EDecl_decl decl -> process_cabs_declaration doc decl
-  | Cabs.EDecl_magic _ -> doc
-  | Cabs.EDecl_funcCN _ -> doc
-  | Cabs.EDecl_lemmaCN _ -> doc
-  | Cabs.EDecl_predCN _ -> doc
-  | Cabs.EDecl_datatypeCN _ -> doc
-  | Cabs.EDecl_type_synCN _ -> doc
-  | Cabs.EDecl_fun_specCN _ -> doc
+    process_function_definition doc' function_definition
+  | Cabs.EDecl_decl decl -> process_cabs_declaration doc' decl
+  | Cabs.EDecl_magic _ -> doc'
+  | Cabs.EDecl_funcCN _ -> doc'
+  | Cabs.EDecl_lemmaCN _ -> doc'
+  | Cabs.EDecl_predCN _ -> doc'
+  | Cabs.EDecl_datatypeCN _ -> doc'
+  | Cabs.EDecl_type_synCN _ -> doc'
+  | Cabs.EDecl_fun_specCN _ -> doc'
 ;;
 
 let process_external_declarations (uri : Uri.t) (decls : Cabs.external_declaration list)
