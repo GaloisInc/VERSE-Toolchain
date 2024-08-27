@@ -1,1 +1,5 @@
-let () = Alcotest.run "cn-lsp-server" [ "ITree", ITree.tests ]
+let () =
+  Alcotest.run
+    "cn-lsp-server"
+    [ "Document", Document.tests; "ITree", ITree.tests; "SourceInfo", SourceInfo.tests ]
+;;
