@@ -73,25 +73,26 @@ class lsp_server (env : LspCn.cerb_env) =
     (***************************************************************)
     (***  Notifications  *******************************************)
 
+    method update_source_info uri =
+      match source_info, SourceInfo.from_file uri with
+      | _, Error e ->
+        let () = Log.e (sprintf "Failed to process document: %s" e) in
+        ()
+      | None, Ok info ->
+        let () = Log.d "Initializing location maps" in
+        source_info <- Some info
+      | Some existing_info, Ok new_info ->
+        let () = Log.d "Updating location maps" in
+        let info = SourceInfo.merge existing_info new_info in
+        source_info <- Some info
+
     (* Required *)
     method on_notif_doc_did_open
       ~notify_back:(_ : Rpc.notify_back)
       (doc : TextDocumentItem.t)
       ~content:(_ : string)
       : unit IO.t =
-      let () =
-        match source_info, SourceInfo.from_file doc.uri with
-        | _, Error e ->
-          let () = Log.e (sprintf "Failed to process document: %s" e) in
-          ()
-        | None, Ok info ->
-          let () = Log.d "Initializing location maps" in
-          source_info <- Some info
-        | Some existing_info, Ok new_info ->
-          let () = Log.d "Updating location maps" in
-          let info = SourceInfo.merge existing_info new_info in
-          source_info <- Some info
-      in
+      let () = self#update_source_info doc.uri in
       IO.return ()
 
     (* Required *)
@@ -118,6 +119,7 @@ class lsp_server (env : LspCn.cerb_env) =
       (params : DidSaveTextDocumentParams.t)
       : unit IO.t =
       let open IO in
+      let () = self#update_source_info params.textDocument.uri in
       if server_config.run_CN_on_save
       then self#run_cn notify_back params.textDocument.uri
       else return ()
