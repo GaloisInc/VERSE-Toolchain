@@ -589,6 +589,9 @@ let parse_document_source (uri : Uri.t) (source : string)
 
 let parse_document_file (uri : Uri.t) : (Cabs.external_declaration list, string) Result.t =
   match preprocess_file uri with
-  | Ok out -> parse_document_source uri out.stdout
+  | Ok out ->
+    Log.d (sprintf "cpp exit code: %i" out.exit_code);
+    Log.d (sprintf "cpp stderr: \n%s" out.stderr);
+    parse_document_source uri out.stdout
   | Error s -> Error s
 ;;
