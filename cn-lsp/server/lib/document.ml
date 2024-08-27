@@ -172,6 +172,11 @@ let add_global (doc : document) (ident : ident) (range : Range.t) (spec : Spec.t
   { doc with scope = scope' }
 ;;
 
+let find_ident (doc : document) (ident : ident) : (Uri.t * Range.t * Spec.t option) option
+  =
+  Scope.find_ident doc.scope ident
+;;
+
 let remember_ident_location
   (doc : document)
   (range : Range.t)
@@ -185,8 +190,8 @@ let remember_ident_location
   doc
 ;;
 
-let locations (document : document) : (Uri.t, (Range.t * ident_info) list) Hashtbl.t =
-  document.locations
+let info_by_uri (document : document) : (Uri.t, ident_info ITree.t) Hashtbl.t =
+  Hashtbl.map document.locations ~f:ITree.from_list
 ;;
 
 let rec attributes_to_spec (attributes : CF.Annot.attributes) : Spec.t option =

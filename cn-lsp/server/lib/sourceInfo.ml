@@ -44,8 +44,7 @@ let from_source (uri : DocumentUri.t) (source : string) : (t, string) Result.t =
   | Error e -> Error e
   | Ok decls ->
     let doc = Document.process_external_declarations uri decls in
-    let locs = Document.locations doc in
-    Ok (Hashtbl.map locs ~f:from_list)
+    Ok (Document.info_by_uri doc)
 ;;
 
 let from_file (uri : DocumentUri.t) : (t, string) Result.t =
@@ -53,8 +52,7 @@ let from_file (uri : DocumentUri.t) : (t, string) Result.t =
   | Error e -> Error e
   | Ok decls ->
     let doc = Document.process_external_declarations uri decls in
-    let locs = Document.locations doc in
-    Ok (Hashtbl.map locs ~f:from_list)
+    Ok (Document.info_by_uri doc)
 ;;
 
 let merge (a : t) (b : t) : t =
