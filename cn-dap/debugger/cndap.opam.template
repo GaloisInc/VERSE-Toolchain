@@ -1,0 +1,18 @@
+pin-depends: [
+  [
+    "cerberus.b9daa22"
+    "git+https://github.com/rems-project/cerberus.git#b9daa22"
+  ]
+  [
+    "cerberus-lib.b9daa22"
+    "git+https://github.com/rems-project/cerberus.git#b9daa22"
+  ]
+  [
+    "cn.b9daa22"
+    "git+https://github.com/rems-project/cerberus.git#b9daa22"
+  ]
+  [
+    "gillian.c6802c5"
+    "git+https://github.com/GillianPlatform/Gillian.git#c6802c5"
+  ]
+]
