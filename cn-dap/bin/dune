@@ -1,0 +1,5 @@
+(executable
+ (public_name cn-debug)
+ (name main)
+ (package cn-dap)
+ (libraries cndap logs))
