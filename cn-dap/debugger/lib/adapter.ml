@@ -23,9 +23,26 @@ let handle_initialize (rpc : Rpc.t) : Dap.Capabilities.t Lwt.t =
   promise
 ;;
 
+let handle_launch (rpc : Rpc.t) : Debugger.t Lwt.t =
+  let promise, resolver = Lwt.task () in
+  Rpc.set_command_handler
+    rpc
+    (module Launch.Command)
+    (fun launch_args ->
+      (* does debugger initialization need to be in Lwt? *)
+      match Debugger.from_launch_args launch_args with
+      | Error s -> Lwt.fail_with s
+      | Ok debugger ->
+        Lwt.wakeup_later resolver debugger;
+        Lwt.return_unit);
+  promise
+;;
+
 let startup (rpc : Rpc.t) : unit Lwt.t =
   let open Lwt.Syntax in
-  let* _capabilities = handle_initialize rpc in
+  let _capabilities = handle_initialize rpc in
+  let* _debugger = handle_launch rpc in
+  Log.d "Initialized debugger";
   Lwt.return_unit
 ;;
 
