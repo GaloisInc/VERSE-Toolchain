@@ -30,6 +30,10 @@ module FrameMap = struct
     }
   ;;
 
+  let get_node (map : t) (node_id : id) : Cn.Report.state_report option =
+    Order.frame map.order node_id
+  ;;
+
   let add_node (map : t) (node_id : id) : unit =
     match Order.frame map.order node_id with
     | None -> ()
@@ -138,6 +142,27 @@ let go_to_next (dbg : t) (prev_id : int) : (unit, string) Result.t =
   | Some next_id ->
     go_to_node dbg next_id;
     Ok ()
+;;
+
+type location =
+  { start_line : int
+  ; start_column : int
+  ; end_line : int
+  ; end_column : int
+  }
+
+let current_location (dbg : t) : location option =
+  let ( let* ) x f = Option.bind x ~f in
+  let* state_report = FrameMap.get_node dbg.frame_map dbg.current_node in
+  let* (start_line, start_column), (end_line, end_column) =
+    state_report.where.loc_cartesian
+  in
+  Some
+    { start_line = start_line + 1
+    ; start_column = start_column + 1
+    ; end_line = end_line + 1
+    ; end_column = end_column + 1
+    }
 ;;
 
 module WireState = struct
