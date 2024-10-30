@@ -77,6 +77,17 @@ let handle_step_specific (rpc : Rpc.t) (dbg : Debugger.t) : unit =
 
 let thread_id = 0
 
+let handle_threads (rpc : Rpc.t) : unit =
+  Rpc.set_command_handler
+    rpc
+    (module Dap.Threads_command)
+    (fun () ->
+      Lwt.return
+        (Dap.Threads_command.Result.make
+           ~threads:[ Dap.Thread.make ~id:thread_id ~name:"main" ]
+           ()))
+;;
+
 let startup (rpc : Rpc.t) : unit Lwt.t =
   let open Lwt.Syntax in
   let _capabilities = handle_initialize rpc in
@@ -86,6 +97,7 @@ let startup (rpc : Rpc.t) : unit Lwt.t =
   handle_debugger_state rpc debugger;
   handle_step_specific rpc debugger;
   handle_jump rpc debugger;
+  handle_threads rpc;
   let stopped =
     Dap.Stopped_event.Payload.make ~reason:Entry ~thread_id:(Some thread_id) ()
   in
