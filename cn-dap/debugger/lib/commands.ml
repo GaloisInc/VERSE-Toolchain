@@ -20,6 +20,23 @@ module DebuggerState = struct
   end
 end
 
+module Jump = struct
+  let type_ = "jump"
+
+  module Arguments = struct
+    type t = { id : int } [@@deriving yojson]
+  end
+
+  (* TODO: deduplicate with `StepSpecific.Result` *)
+  module Result = struct
+    type t =
+      { success : bool
+      ; err : string option [@default None]
+      }
+    [@@deriving yojson]
+  end
+end
+
 module Launch = struct
   let type_ = Dap.Launch_command.type_
 
@@ -46,6 +63,7 @@ module StepSpecific = struct
     [@@deriving yojson]
   end
 
+  (* TODO: deduplicate with `Jump.Result` *)
   module Result = struct
     type t =
       { success : bool
