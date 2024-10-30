@@ -48,12 +48,28 @@ let handle_debugger_state (rpc : Rpc.t) (dbg : Debugger.t) : unit =
     (fun () -> Lwt.return (Debugger.wire_state dbg))
 ;;
 
+let handle_step_specific (rpc : Rpc.t) (dbg : Debugger.t) : unit =
+  let open Lwt.Syntax in
+  Rpc.set_command_handler
+    rpc
+    (module Commands.StepSpecific)
+    (fun args ->
+      match Debugger.step_specific dbg args.prev_id with
+      | Error s ->
+        Lwt.return Commands.StepSpecific.Result.{ success = false; err = Some s }
+      | Ok () ->
+        let state = Debugger.wire_state dbg in
+        let* () = Rpc.send_event rpc (module Events.DebugStateUpdate) state in
+        Lwt.return Commands.StepSpecific.Result.{ success = true; err = None })
+;;
+
 let startup (rpc : Rpc.t) : unit Lwt.t =
   let open Lwt.Syntax in
   let _capabilities = handle_initialize rpc in
   let* debugger = handle_launch rpc in
   Log.d "Initialized debugger";
   handle_debugger_state rpc debugger;
+  handle_step_specific rpc debugger;
   Lwt.return_unit
 ;;
 

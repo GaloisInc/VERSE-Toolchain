@@ -50,10 +50,14 @@ module FrameMap = struct
         node
   ;;
 
-  let reveal_next (map : t) (prev_id : id) : unit =
+  let reveal_next (map : t) (prev_id : id) : id option =
     match Order.next map.order prev_id with
-    | None -> Log.d (Printf.sprintf "Node %i had no `next`" prev_id)
-    | Some Zero -> Log.d (Printf.sprintf "Node %i was terminal" prev_id)
+    | None ->
+      Log.d (Printf.sprintf "Node %i had no `next`" prev_id);
+      None
+    | Some Zero ->
+      Log.d (Printf.sprintf "Node %i was terminal" prev_id);
+      None
     | Some (One next_id) ->
       Log.d (Printf.sprintf "Node %i had one `next`, %i " prev_id next_id);
       add_node map next_id;
@@ -69,10 +73,11 @@ module FrameMap = struct
         { prev_node with next = new_next }
       in
       let _ = Exec_map.map_node map.exec_map (id_of_int prev_id) update_prev in
-      ()
+      Some next_id
     | Some (Many next_ids) ->
       List.iter next_ids ~f:(add_node map);
-      Log.d "Unimplemented: revealing `Many` next nodes"
+      Log.d "Unimplemented: revealing `Many` next nodes";
+      None
   ;;
 
   let of_order (order : Order.t) : t =
@@ -85,7 +90,8 @@ module FrameMap = struct
 end
 
 type t =
-  { frame_map : FrameMap.t
+  { mutable current_node : int
+  ; frame_map : FrameMap.t
   ; procedure_name : string
   ; source_file : string
   }
@@ -115,7 +121,16 @@ let make (source_file : string) (procedure_name : string) : (t, string) Result.t
       ~error:"unable to create ordering"
   in
   let frame_map = FrameMap.of_order order in
-  Result.Ok { frame_map; procedure_name; source_file }
+  Result.Ok
+    { current_node = frame_map.order.root; frame_map; procedure_name; source_file }
+;;
+
+let step_specific (dbg : t) (prev_id : int) : (unit, string) Result.t =
+  match FrameMap.reveal_next dbg.frame_map prev_id with
+  | None -> Error "unable to step"
+  | Some next_id ->
+    dbg.current_node <- next_id;
+    Ok ()
 ;;
 
 module WireState = struct
@@ -155,12 +170,17 @@ module WireState = struct
     }
   [@@deriving yojson]
 
-  let of_exec_map (exec_map : Exec_map.Packaged.t) (proc_name : string) : t =
+  let of_exec_map
+    (exec_map : Exec_map.Packaged.t)
+    (proc_name : string)
+    (current_cmd_id : int)
+    : t
+    =
     let procs = Hashtbl.create (module String) ~size:1 in
     let proc_state =
       { exec_map = Exec_map.make ()
       ; lifted_exec_map = exec_map
-      ; current_cmd_id = 0
+      ; current_cmd_id
       ; matches = []
       ; proc_name
       }
@@ -170,6 +190,8 @@ module WireState = struct
   ;;
 end
 
+(* TODO: the abstraction boundaries between this module, WireState, and FrameMap
+   feel off... *)
 let wire_state (dbg : t) : WireState.t =
-  WireState.of_exec_map dbg.frame_map.exec_map dbg.procedure_name
+  WireState.of_exec_map dbg.frame_map.exec_map dbg.procedure_name dbg.current_node
 ;;
