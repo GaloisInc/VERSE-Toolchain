@@ -80,6 +80,7 @@ let startup (rpc : Rpc.t) : unit Lwt.t =
   let _capabilities = handle_initialize rpc in
   let* debugger = handle_launch rpc in
   Log.d "Initialized debugger";
+  let* () = Rpc.send_event rpc (module Dap.Initialized_event) () in
   handle_debugger_state rpc debugger;
   handle_step_specific rpc debugger;
   handle_jump rpc debugger;
