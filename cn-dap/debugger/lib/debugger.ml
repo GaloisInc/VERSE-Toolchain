@@ -125,11 +125,18 @@ let make (source_file : string) (procedure_name : string) : (t, string) Result.t
     { current_node = frame_map.order.root; frame_map; procedure_name; source_file }
 ;;
 
-let step_specific (dbg : t) (prev_id : int) : (unit, string) Result.t =
+let go_to_node (dbg : t) (node_id : int) : unit =
+  Log.d (Printf.sprintf "Setting current node to %i" node_id);
+  (* TODO: worthwhile to keep a set of nodes we've seen? Erroneous to go to one
+     we haven't? *)
+  dbg.current_node <- node_id
+;;
+
+let go_to_next (dbg : t) (prev_id : int) : (unit, string) Result.t =
   match FrameMap.reveal_next dbg.frame_map prev_id with
   | None -> Error "unable to step"
   | Some next_id ->
-    dbg.current_node <- next_id;
+    go_to_node dbg next_id;
     Ok ()
 ;;
 
