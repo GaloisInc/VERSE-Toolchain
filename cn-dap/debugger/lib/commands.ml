@@ -34,3 +34,23 @@ module Launch = struct
 
   module Result = Dap.Launch_command.Result
 end
+
+module StepSpecific = struct
+  let type_ = "stepSpecific"
+
+  module Arguments = struct
+    type t =
+      { prev_id : int [@key "prevId"]
+      ; branch_case : Yojson.Safe.t option [@key "branchCase"]
+      }
+    [@@deriving yojson]
+  end
+
+  module Result = struct
+    type t =
+      { success : bool
+      ; err : string option [@default None]
+      }
+    [@@deriving yojson]
+  end
+end
