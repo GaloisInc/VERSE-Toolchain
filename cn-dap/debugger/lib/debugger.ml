@@ -2,99 +2,10 @@ open Base
 module Dap = Debug_protocol
 module Exec_map = Gillian.Debugger.Utils.Exec_map
 
-module FrameMap = struct
-  type t =
-    { exec_map : Exec_map.Packaged.t
-    ; order : Order.t
-    }
-
-  type id = int
-
-  let id_of_int (i : int) : Logging.Report_id.t =
-    Result.ok_or_failwith (Logging.Report_id.of_yojson (`Int i))
-  ;;
-
-  type cmd_data = Exec_map.Packaged.cmd_data
-
-  let cmd_data_of_state_report (id : id) (state_report : Cn.Report.state_report)
-    : cmd_data
-    =
-    let locstr ((l1, c1), (l2, c2)) = Printf.sprintf "%i:%i - %i:%i" l1 c1 l2 c2 in
-    { id = id_of_int id
-    ; all_ids = [ id_of_int id ]
-    ; display =
-        Option.value_map state_report.where.loc_cartesian ~default:"<none>" ~f:locstr
-    ; matches = []
-    ; errors = []
-    ; submap = NoSubmap
-    }
-  ;;
-
-  let get_node (map : t) (node_id : id) : Cn.Report.state_report option =
-    Order.frame map.order node_id
-  ;;
-
-  let add_node (map : t) (node_id : id) : unit =
-    match Order.frame map.order node_id with
-    | None -> ()
-    | Some frame ->
-      let data = cmd_data_of_state_report node_id frame in
-      let next =
-        match Order.next map.order node_id with
-        | None -> None
-        | Some Zero -> None
-        | Some (One _) -> Some (Exec_map.Single (None, "next"))
-        | Some (Many _) -> Some (Exec_map.Branch [])
-      in
-      let node = Exec_map.{ data; next } in
-      Exec_map.insert
-        map.exec_map
-        ~all_ids:[ id_of_int node_id ]
-        ~id:(id_of_int node_id)
-        node
-  ;;
-
-  let reveal_next (map : t) (prev_id : id) : id option =
-    match Order.next map.order prev_id with
-    | None ->
-      Log.d (Printf.sprintf "Node %i had no `next`" prev_id);
-      None
-    | Some Zero ->
-      Log.d (Printf.sprintf "Node %i was terminal" prev_id);
-      None
-    | Some (One next_id) ->
-      Log.d (Printf.sprintf "Node %i had one `next`, %i " prev_id next_id);
-      add_node map next_id;
-      let update_prev prev_node =
-        let new_next =
-          match Exec_map.(prev_node.next) with
-          | Some (Exec_map.Single (_, x)) ->
-            Some (Exec_map.Single (Some (id_of_int next_id), x))
-          | n ->
-            Log.d (Printf.sprintf "Unexpected existing `next` for node %i" prev_id);
-            n
-        in
-        { prev_node with next = new_next }
-      in
-      let _ = Exec_map.map_node map.exec_map (id_of_int prev_id) update_prev in
-      Some next_id
-    | Some (Many next_ids) ->
-      List.iter next_ids ~f:(add_node map);
-      Log.d "Unimplemented: revealing `Many` next nodes";
-      None
-  ;;
-
-  let of_order (order : Order.t) : t =
-    let exec_map = Exec_map.make () in
-    exec_map.root <- Some (id_of_int order.root);
-    let map = { exec_map; order } in
-    let () = add_node map order.root in
-    map
-  ;;
-end
+type id = FrameMap.id
 
 type t =
-  { mutable current_node : int
+  { mutable current_node : id
   ; frame_map : FrameMap.t
   ; procedure_name : string
   ; source_file : string
@@ -119,24 +30,22 @@ let make (source_file : string) (procedure_name : string) : (t, string) Result.t
   in
   Log.d (Printf.sprintf "Looking for report file at %s" report_file);
   let* report = report_from_file report_file in
-  let* order =
+  let* frame_map =
     Result.of_option
-      (Order.of_state_reports report.trace)
-      ~error:"unable to create ordering"
+      (FrameMap.of_state_reports report.trace)
+      ~error:"unable to create frame map"
   in
-  let frame_map = FrameMap.of_order order in
-  Result.Ok
-    { current_node = frame_map.order.root; frame_map; procedure_name; source_file }
+  Result.Ok { current_node = frame_map.root; frame_map; procedure_name; source_file }
 ;;
 
-let go_to_node (dbg : t) (node_id : int) : unit =
+let go_to_node (dbg : t) (node_id : id) : unit =
   Log.d (Printf.sprintf "Setting current node to %i" node_id);
   (* TODO: worthwhile to keep a set of nodes we've seen? Erroneous to go to one
      we haven't? *)
   dbg.current_node <- node_id
 ;;
 
-let go_to_next (dbg : t) (prev_id : int) : (unit, string) Result.t =
+let go_to_next (dbg : t) (prev_id : id) : (unit, string) Result.t =
   match FrameMap.reveal_next dbg.frame_map prev_id with
   | None -> Error "unable to step"
   | Some next_id ->
@@ -153,7 +62,7 @@ type location =
 
 let current_location (dbg : t) : location option =
   let ( let* ) x f = Option.bind x ~f in
-  let* state_report = FrameMap.get_node dbg.frame_map dbg.current_node in
+  let* state_report = FrameMap.find_frame dbg.frame_map dbg.current_node in
   let* (start_line, start_column), (end_line, end_column) =
     state_report.where.loc_cartesian
   in
@@ -225,5 +134,5 @@ end
 (* TODO: the abstraction boundaries between this module, WireState, and FrameMap
    feel off... *)
 let wire_state (dbg : t) : WireState.t =
-  WireState.of_exec_map dbg.frame_map.exec_map dbg.procedure_name dbg.current_node
+  WireState.of_exec_map dbg.frame_map.revealed dbg.procedure_name dbg.current_node
 ;;
