@@ -38,11 +38,19 @@ let handle_launch (rpc : Rpc.t) : Debugger.t Lwt.t =
   promise
 ;;
 
+let handle_debugger_state (rpc : Rpc.t) (dbg : Debugger.t) : unit =
+  Rpc.set_command_handler
+    rpc
+    (module Debugger_state.Command)
+    (fun () -> Lwt.return (Debugger.wire_state dbg))
+;;
+
 let startup (rpc : Rpc.t) : unit Lwt.t =
   let open Lwt.Syntax in
   let _capabilities = handle_initialize rpc in
-  let* _debugger = handle_launch rpc in
+  let* debugger = handle_launch rpc in
   Log.d "Initialized debugger";
+  handle_debugger_state rpc debugger;
   Lwt.return_unit
 ;;
 
