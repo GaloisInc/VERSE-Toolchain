@@ -75,6 +75,8 @@ let handle_step_specific (rpc : Rpc.t) (dbg : Debugger.t) : unit =
         Lwt.return Commands.StepSpecific.Result.{ success = true; err = None })
 ;;
 
+let thread_id = 0
+
 let startup (rpc : Rpc.t) : unit Lwt.t =
   let open Lwt.Syntax in
   let _capabilities = handle_initialize rpc in
@@ -84,6 +86,10 @@ let startup (rpc : Rpc.t) : unit Lwt.t =
   handle_debugger_state rpc debugger;
   handle_step_specific rpc debugger;
   handle_jump rpc debugger;
+  let stopped =
+    Dap.Stopped_event.Payload.make ~reason:Entry ~thread_id:(Some thread_id) ()
+  in
+  let* () = Rpc.send_event rpc (module Dap.Stopped_event) stopped in
   Lwt.return_unit
 ;;
 
