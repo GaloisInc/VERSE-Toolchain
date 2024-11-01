@@ -173,6 +173,59 @@ let handle_threads (rpc : Rpc.t) : unit =
            ()))
 ;;
 
+let handle_variables (rpc : Rpc.t) (dbg : Debugger.t) : unit =
+  Rpc.set_command_handler
+    rpc
+    (module Dap.Variables_command)
+    (fun args ->
+      let variable_scope = args.variables_reference in
+      (*
+         Per the spec: "[i]f `variablesReference` is > 0, the variable is
+         structured and its children can be retrieved by passing
+         `variablesReference` to the `variables` request"
+      *)
+      let unstructured_variable_reference = 0 in
+      let variable_of_string s =
+        Dap.Variable.make
+          ~name:s
+          ~value:""
+          ~variables_reference:unstructured_variable_reference
+          ()
+      in
+      let variable_of_term (t : Debugger.term) =
+        Dap.Variable.make
+          ~name:t.name
+          ~value:t.value
+          ~variables_reference:unstructured_variable_reference
+          ()
+      in
+      let variables =
+        match Scope.find_scope variable_scope with
+        | None ->
+          Log.e (Printf.sprintf "Scope %i not recognized!" variable_scope);
+          []
+        | Some Constraints ->
+          (match Debugger.current_constraints dbg with
+           | None ->
+             Log.d "No constraints found";
+             []
+           | Some constraints -> List.map constraints ~f:variable_of_string)
+        | Some Resources ->
+          (match Debugger.current_resources dbg with
+           | None ->
+             Log.d "No resources found";
+             []
+           | Some resources -> List.map resources ~f:variable_of_string)
+        | Some Terms ->
+          (match Debugger.current_terms dbg with
+           | None ->
+             Log.d "No terms found";
+             []
+           | Some terms -> List.map terms ~f:variable_of_term)
+      in
+      Lwt.return (Dap.Variables_command.Result.make ~variables ()))
+;;
+
 let startup (rpc : Rpc.t) : unit Lwt.t =
   let open Lwt.Syntax in
   let _capabilities = handle_initialize rpc in
@@ -185,6 +238,7 @@ let startup (rpc : Rpc.t) : unit Lwt.t =
   handle_stack_trace rpc debugger;
   handle_threads rpc;
   handle_scopes rpc;
+  handle_variables rpc debugger;
   let* () = send_stopped_event rpc Entry in
   Lwt.return_unit
 ;;

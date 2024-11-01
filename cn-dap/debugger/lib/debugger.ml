@@ -74,6 +74,36 @@ let current_location (dbg : t) : location option =
     }
 ;;
 
+let current_constraints (dbg : t) : string list option =
+  let ( let* ) x f = Option.bind x ~f in
+  let* state_report = FrameMap.find_frame dbg.frame_map dbg.current_node in
+  let* interesting = Cn.Report.(get_labeled state_report.constraints lab_interesting) in
+  Some (List.map interesting ~f:(fun view -> Cn.Pp.plain view.original))
+;;
+
+let current_resources (dbg : t) : string list option =
+  let ( let* ) x f = Option.bind x ~f in
+  let* state_report = FrameMap.find_frame dbg.frame_map dbg.current_node in
+  let* interesting = Cn.Report.(get_labeled state_report.resources lab_interesting) in
+  Some (List.map interesting ~f:(fun view -> Cn.Pp.plain view.original))
+;;
+
+type term =
+  { name : string
+  ; value : string
+  }
+
+let term_of_term_entry (entry : Cn.Report.term_entry) : term =
+  { name = Cn.Pp.plain entry.term; value = Cn.Pp.plain entry.value }
+;;
+
+let current_terms (dbg : t) : term list option =
+  let ( let* ) x f = Option.bind x ~f in
+  let* state_report = FrameMap.find_frame dbg.frame_map dbg.current_node in
+  let* interesting = Cn.Report.(get_labeled state_report.terms lab_interesting) in
+  Some (List.map interesting ~f:term_of_term_entry)
+;;
+
 module WireState = struct
   type state =
     { exec_map : Exec_map.Packaged.t [@key "execMap"]
