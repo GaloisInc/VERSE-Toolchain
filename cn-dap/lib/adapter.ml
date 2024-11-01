@@ -69,6 +69,53 @@ let handle_jump (rpc : Rpc.t) (dbg : Debugger.t) : unit =
       Lwt.return Commands.Jump.Result.{ success = true; err = None })
 ;;
 
+module Scope = struct
+  type t =
+    | Constraints
+    | Resources
+    | Terms
+  [@@deriving enumerate]
+
+  let to_string (scope : t) : string =
+    match scope with
+    | Constraints -> "Constraints"
+    | Resources -> "Resources"
+    | Terms -> "Terms"
+  ;;
+
+  let all_scopes : (int, t) Hashtbl.t =
+    let map = Hashtbl.create (module Int) in
+    (* `idx + 1` because, per the spec, 0 is reserved as a reference to an
+       "unstructured" variable whose value can't be explored. Because scope and
+       variable references occupy the same namespace, using it here leads a
+       client to treat whatever scope 0 is assigned to as an unstructured scope,
+       which prevents its variables from even being listed. *)
+    List.iteri all ~f:(fun idx scope -> Hashtbl.add_exn map ~key:(idx + 1) ~data:scope);
+    map
+  ;;
+
+  (** Get the scope (as [t]) associated with a given variable reference *)
+  let find_scope (variable_reference : int) : t option =
+    Hashtbl.find all_scopes variable_reference
+  ;;
+end
+
+let handle_scopes (rpc : Rpc.t) : unit =
+  Rpc.set_command_handler
+    rpc
+    (module Dap.Scopes_command)
+    (fun _args ->
+      let scope (idx, scope) =
+        Dap.Scope.make
+          ~name:(Scope.to_string scope)
+          ~variables_reference:idx
+          ~expensive:false
+          ()
+      in
+      let scopes = List.map (Hashtbl.to_alist Scope.all_scopes) ~f:scope in
+      Lwt.return (Dap.Scopes_command.Result.make ~scopes ()))
+;;
+
 let handle_step_specific (rpc : Rpc.t) (dbg : Debugger.t) : unit =
   let open Lwt.Syntax in
   Rpc.set_command_handler
@@ -137,6 +184,7 @@ let startup (rpc : Rpc.t) : unit Lwt.t =
   handle_jump rpc debugger;
   handle_stack_trace rpc debugger;
   handle_threads rpc;
+  handle_scopes rpc;
   let* () = send_stopped_event rpc Entry in
   Lwt.return_unit
 ;;
