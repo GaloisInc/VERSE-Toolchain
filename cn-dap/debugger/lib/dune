@@ -1,7 +1,8 @@
 (library
  (name cndap)
  (libraries cn dap.rpc_lwt gillian ppx_deriving_yojson.runtime yojson)
- (preprocess (pps ppx_deriving_yojson)))
+ (preprocess
+  (pps ppx_enumerate ppx_deriving_yojson)))
 
 (env
  (dev
