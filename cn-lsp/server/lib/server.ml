@@ -38,19 +38,25 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
 
 module Config = struct
   (** The client controls these options, and sends them at a server's request *)
-  type t = { run_CN_on_save : bool }
+  type t =
+    { run_CN_on_save : bool
+    ; show_Gillian_debug_lenses : bool
+    }
 
   (** The name of the configuration "section" the client uses to identify
       CN-specific settings *)
   let section : string = "CN"
 
-  let default : t = { run_CN_on_save = false }
+  let default : t = { run_CN_on_save = false; show_Gillian_debug_lenses = false }
 
   let t_of_yojson (json : Json.t) : t option =
     let open Json.Util in
     try
       let run_CN_on_save = json |> member "runOnSave" |> to_bool in
-      Some { run_CN_on_save }
+      let show_Gillian_debug_lenses =
+        json |> member "showGillianDebugLenses" |> to_bool
+      in
+      Some { run_CN_on_save; show_Gillian_debug_lenses }
     with
     | _ -> None
   ;;
@@ -143,7 +149,9 @@ class lsp_server (env : LspCn.cerb_env) =
       ~partialResultToken:(_ : ProgressToken.t option)
       (_ : Rpc.doc_state)
       : CodeLens.t list IO.t =
-      IO.return (Lenses.gillian_lenses_for uri)
+      if server_config.show_Gillian_debug_lenses
+      then IO.return (Lenses.gillian_lenses_for uri)
+      else IO.return []
 
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
