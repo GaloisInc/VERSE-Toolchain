@@ -1,4 +1,4 @@
-name: OCaml CI
+name: CN Debugger CI
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
   build:
     strategy:
       matrix:
-        ocaml-version: [4.14.1]
+        ocaml-version: [5.1.1]
         os: [ubuntu-22.04]
 
     runs-on: ${{ matrix.os }}
@@ -31,13 +31,11 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
 
-      - name: Link lockfiles
-        run: |
-          ln -s telemetry.opam.locked-${{ matrix.ocaml-version }} telemetry.opam.locked
-          ln -s cn-lsp.opam.locked-${{ matrix.ocaml-version }} cn-lsp.opam.locked
+      - name: Link lockfile
+        run: ln -s cn-dap.opam.locked-${{ matrix.ocaml-version }} cn-dap.opam.locked
 
       - name: Install dependencies
-        run: opam install ./telemetry.opam ./cn-lsp.opam --deps-only --locked -y
+        run: opam install ./cn-dap.opam --deps-only --locked -y
 
       - name: Build
         run: eval $(opam env) && dune build
