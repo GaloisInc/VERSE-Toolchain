@@ -46,6 +46,7 @@ module Config = struct
   (** The client controls these options, and sends them at a server's request *)
   type t =
     { run_CN_on_save : bool [@key "runOnSave"]
+    ; show_gillian_debug_lenses : bool [@key "showGillianDebugLenses"]
     ; telemetry_dir : string option [@default None] [@key "telemetryDir"]
     }
   [@@deriving yojson { strict = false }]
@@ -58,7 +59,9 @@ module Config = struct
       CN-specific settings *)
   let section : string = "CN"
 
-  let default : t = { run_CN_on_save = false; telemetry_dir = None }
+  let default : t =
+    { run_CN_on_save = false; show_gillian_debug_lenses = false; telemetry_dir = None }
+  ;;
 end
 
 let sprintf = Printf.sprintf
@@ -174,7 +177,9 @@ class lsp_server (env : LspCn.cerb_env) =
       ~partialResultToken:(_ : ProgressToken.t option)
       (_ : Rpc.doc_state)
       : CodeLens.t list IO.t =
-      IO.return (Lenses.gillian_lenses_for uri)
+      if server_config.show_gillian_debug_lenses
+      then IO.return (Lenses.gillian_lenses_for uri)
+      else IO.return []
 
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
