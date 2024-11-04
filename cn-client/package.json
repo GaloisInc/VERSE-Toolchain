@@ -51,6 +51,12 @@
                 }
             }
         },
+        "debuggers": [
+            {
+                "type": "CN",
+                "label": "CN Debugger"
+            }
+        ],
         "grammars": [
             {
                 "path": "./syntaxes/cn.tmLanguage.json",
