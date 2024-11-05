@@ -60,6 +60,13 @@ export function activate(context: vsc.ExtensionContext): void {
         client.sendRequest(req, params);
     });
 
+    context.subscriptions.push(
+        vsc.debug.registerDebugAdapterDescriptorFactory(
+            "CN",
+            new CNDebugAdaptorDescriptorFactory()
+        )
+    );
+
     client.start();
     console.log("started client");
 }
@@ -69,6 +76,29 @@ export function deactivate(): Thenable<void> | undefined {
         return undefined;
     } else {
         return client.stop();
+    }
+}
+
+class CNDebugAdaptorDescriptorFactory
+    implements vsc.DebugAdapterDescriptorFactory
+{
+    createDebugAdapterDescriptor(
+        _session: vsc.DebugSession,
+        executable: vsc.DebugAdapterExecutable | undefined
+    ): vsc.ProviderResult<vsc.DebugAdapterDescriptor> {
+        let langCmd: string = "cn-debug";
+
+        const config = vsc.workspace.getConfiguration("gillianDebugger");
+        console.log("Configuring debugger...", { config });
+
+        let args = [
+            "--log",
+            "/Users/sam/projects/verse/verse-toolchain/cn-dap/debugger/log.txt",
+        ];
+
+        executable = new vsc.DebugAdapterExecutable(langCmd, args);
+
+        return executable;
     }
 }
 

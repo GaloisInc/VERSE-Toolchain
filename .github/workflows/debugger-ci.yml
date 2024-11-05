@@ -1,4 +1,4 @@
-name: CN Server CI
+name: CN Debugger CI
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
   build:
     strategy:
       matrix:
-        ocaml-version: [4.14.1]
+        ocaml-version: [5.1.1]
         os: [ubuntu-22.04]
 
     runs-on: ${{ matrix.os }}
@@ -36,10 +36,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: _opam
-          key: ${{ matrix.ocaml-version }}-server
+          key: ${{ matrix.ocaml-version }}-debugger
 
-      - name: Install server dependencies
-        working-directory: ./cn-lsp/server
+      - name: Install debugger dependencies
+        working-directory: ./cn-dap/debugger
         run: |
           eval $(opam env)
           opam install . --deps-only --locked -y
@@ -51,14 +51,14 @@ jobs:
           path: _opam
           key: ${{ steps.cache-opam-restore.outputs.cache-primary-key }}
 
-      - name: Build server
-        working-directory: ./cn-lsp/server
+      - name: Build debugger
+        working-directory: ./cn-dap/debugger
         run: |
           eval $(opam env)
           dune build
 
-      - name: Run server tests
-        working-directory: ./cn-lsp/server
+      - name: Run debugger tests
+        working-directory: ./cn-dap/debugger
         run: |
           eval $(opam env)
           dune test
