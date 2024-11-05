@@ -30,9 +30,12 @@ let make (source_file : string) (procedure_name : string) : (t, string) Result.t
   in
   Log.d (Printf.sprintf "Looking for report file at %s" report_file);
   let* report = report_from_file report_file in
+  let with_locations =
+    List.filter report.trace ~f:(fun t -> Option.is_some t.where.loc_cartesian)
+  in
   let* frame_map =
     Result.of_option
-      (FrameMap.of_state_reports report.trace)
+      (FrameMap.of_state_reports with_locations)
       ~error:"unable to create frame map"
   in
   Result.Ok { current_node = frame_map.root; frame_map; procedure_name; source_file }
