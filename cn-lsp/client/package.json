@@ -34,10 +34,20 @@
         "configuration": {
             "title": "CN",
             "properties": {
+                "CN.cerbRuntime": {
+                    "type": "string",
+                    "default": null,
+                    "description": "Location of Cerberus runtime files"
+                },
                 "CN.runOnSave": {
                     "type": "boolean",
                     "default": false,
                     "description": "Run CN whenever a file is saved"
+                },
+                "CN.serverPath": {
+                    "type": "string",
+                    "default": null,
+                    "description": "Location of the LSP server"
                 }
             }
         },
