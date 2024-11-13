@@ -31,8 +31,10 @@ the last step from VSCode's GUI:
 
 Running CN requires that the client be able to find and run a CN language
 server. [Our server's README](../server/README.md) has instructions for a basic
-installation. If you want to control the exact server the client uses, these are
-the locations the client will search (in order) for a server executable:
+installation. In the client, you'll be prompted to select the opam switch you
+created for the server. Your choice is preserved on a per-workspace basis, and
+can be changed by editing your workspace settings. If you don't choose, the
+client will search these locations (in order) for a server executable:
 - The `CN_LSP_SERVER` environment variable
 - On the current `PATH`, for an executable named `cn-lsp-server`
 
