@@ -14,12 +14,8 @@ opam switch create . ocaml.$VERSION --locked -y
 eval $(opam env)
 ```
 
-If this command succeeds, it should put a `cn-lsp-server` binary on your
-`$PATH`, but (because the switch is local) only when you're in this directory. I
-recommend choosing a location that's always available on your `$PATH` and either
-copying `cn-lsp-server` to that location or symlinking to it:
-```sh
-cp `which cn-lsp-server` /somewhere/on/PATH
-# or
-ln -s `which cn-lsp-server` /somewhere/on/PATH
-```
+If this command succeeds, it should install the server into your local switch.
+Any clients should run the binary from there. If a client is run outside the
+context of your local switch, it will also need to set `$CERB_RUNTIME` to point
+to Cerberus's runtime file dependencies, which are (currently) installed in the
+switch at `<opam-dir>/lib/cerberus/runtime`.
