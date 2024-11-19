@@ -2,20 +2,41 @@ import * as vsc from "vscode";
 import * as ct from "vscode-languageclient/node";
 
 import child_process from "child_process";
+import fs from "fs";
+import path from "path";
 
 let client: ct.LanguageClient;
 
-type Maybe<T> = T | null;
+type Maybe<T> = T | undefined;
 
-export function activate(context: vsc.ExtensionContext): void {
-    const serverPath = findServer(context);
-    if (serverPath === null) {
+export async function activate(context: vsc.ExtensionContext): Promise<void> {
+    let serverContext = getConfiguredServerContext();
+
+    if (serverContext === undefined) {
+        serverContext = await newServerContext(context);
+    }
+
+    if (serverContext === undefined) {
         vsc.window.showErrorMessage("CN client: unable to find CN server");
         throw Error;
     }
+
+    await setConfiguredServerContext(serverContext);
+
+    let env = process.env;
+    if (serverContext.cerbRuntime !== undefined) {
+        env.CERB_RUNTIME = serverContext.cerbRuntime;
+    } else {
+        // TODO: we already tried to get ahold of the runtime when we generated
+        // or retrieved in a server configuration, should we try again?
+    }
+
     const serverOptions: ct.Executable = {
-        command: serverPath,
+        command: serverContext.serverPath,
         transport: ct.TransportKind.pipe,
+        options: {
+            env,
+        },
     };
 
     const clientOptions: ct.LanguageClientOptions = {
@@ -72,23 +93,89 @@ export function deactivate(): Thenable<void> | undefined {
     }
 }
 
-function findServer(context: vsc.ExtensionContext): Maybe<string> {
-    // Is it defined in $CN_LSP_SERVER?
+interface ServerContext {
+    serverPath: string;
+    cerbRuntime?: string;
+}
+
+async function newServerContext(
+    context: vsc.ExtensionContext
+): Promise<Maybe<ServerContext>> {
+    let switches = child_process.spawnSync("opam", ["switch", "list", "-s"], {
+        encoding: "utf-8",
+    });
+    if (switches.status === 0) {
+        let switchNames = switches.stdout.trim().split("\n");
+        let switchName = await vsc.window.showQuickPick(switchNames, {
+            placeHolder:
+                "Which opam switch contains your language server installation?",
+        });
+        if (switchName !== undefined) {
+            // Whether the switch is local or global determines how we find its
+            // opam directory
+            let opamDir: string;
+            if (path.isAbsolute(switchName)) {
+                // The switch is local
+                opamDir = path.join(switchName, "_opam");
+            } else {
+                opamDir = path.join("~", ".opam", switchName);
+            }
+
+            let serverPath = path.join(opamDir, "bin", "cn-lsp-server");
+            let cerbRuntime = path.join(opamDir, "lib", "cerberus", "runtime");
+
+            if (fs.existsSync(serverPath) && fs.existsSync(cerbRuntime)) {
+                return {
+                    serverPath,
+                    cerbRuntime,
+                };
+            }
+        }
+    }
+
     console.log("Looking in $CN_LSP_SERVER");
     console.log(process.env);
     let envPath = process.env.CN_LSP_SERVER;
     if (envPath !== undefined) {
-        return envPath;
+        return { serverPath: envPath };
     }
 
-    // Is it on $PATH?
     console.log("Looking on $PATH");
     const out = child_process.spawnSync("which", ["cn-lsp-server"], {
         encoding: "utf-8",
     });
     if (out.status === 0) {
-        return out.stdout.trim();
+        let serverPath = out.stdout.trim();
+        return { serverPath };
     }
 
-    return null;
+    return undefined;
+}
+
+function getConfiguredServerContext(): Maybe<ServerContext> {
+    let conf = vsc.workspace.getConfiguration("CN");
+    let serverPath: Maybe<string> = conf.get("serverPath");
+    let cerbRuntime: Maybe<string> = conf.get("cerbRuntime");
+
+    // In practice, despite the type annotations, `conf.get` seems capable of
+    // returning `null` values, so we need to check them
+    if (serverPath !== null && serverPath !== undefined) {
+        return { serverPath, cerbRuntime };
+    } else {
+        return undefined;
+    }
+}
+
+async function setConfiguredServerContext(serverContext: ServerContext) {
+    let conf = vsc.workspace.getConfiguration("CN");
+    await conf.update(
+        "cerbRuntime",
+        serverContext.cerbRuntime,
+        vsc.ConfigurationTarget.Global
+    );
+    await conf.update(
+        "serverPath",
+        serverContext.serverPath,
+        vsc.ConfigurationTarget.Global
+    );
 }
