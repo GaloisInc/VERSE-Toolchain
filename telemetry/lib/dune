@@ -1,0 +1,9 @@
+(library
+ (name telemetry)
+ (libraries base unix))
+
+(env
+ (dev
+  (flags
+   ;; Disable promotion of warnings to errors
+   (:standard -warn-error -A))))

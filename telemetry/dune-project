@@ -1,0 +1,20 @@
+(lang dune 3.16)
+
+(name telemetry)
+
+(generate_opam_files true)
+
+(authors "Sam Cowger")
+
+(maintainers "Sam Cowger")
+
+(package
+ (name telemetry)
+ (synopsis "Telemetry collection")
+ (depends
+  ocaml
+  dune
+  (base
+   (and
+    (>= v0.16.3)
+    (< v0.18)))))
