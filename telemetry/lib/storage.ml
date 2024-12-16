@@ -2,7 +2,12 @@ open Base
 module Filename = Stdlib.Filename
 
 type t = { root_dir : string }
-type err = string
+
+type err =
+  | Deserialization of string
+  | Multiple of err list
+  | Serialization of string
+  | FileNotFound of string
 
 (** Convert a possibly-relative filepath into an absolute one *)
 let canonicalize (path : string) : string =
@@ -81,8 +86,11 @@ let store (storage : t) ~(event : 'data Event.t) ~(serialize : 'data -> Yojson.S
     0o644
     path
     (fun oc ->
-       Yojson.Safe.to_channel ~suf:"\n" oc js;
-       Ok ())
+       try
+         Yojson.Safe.to_channel ~suf:"\n" oc js;
+         Ok ()
+       with
+       | Yojson.Json_error s -> Error (Serialization s))
 ;;
 
 let from_source (source : string) (event_js : Yojson.Safe.t) : Yojson.Safe.t option =
@@ -103,16 +111,20 @@ let load_session
   =
   let event_path = event_file storage session in
   if not (Stdlib.Sys.file_exists event_path)
-  then Error "not found"
+  then Error (FileNotFound event_path)
   else (
-    let all_records = Stdlib.List.of_seq (Yojson.Safe.seq_from_file event_path) in
-    let relevant_records = List.filter_map all_records ~f:(from_source source) in
+    let all_objs = Stdlib.List.of_seq (Yojson.Safe.seq_from_file event_path) in
+    let relevant_objs = List.filter_map all_objs ~f:(from_source source) in
     let load_results =
-      List.map relevant_records ~f:(stored_event_of_yojson deserialize)
+      List.mapi relevant_objs ~f:(fun i obj ->
+        match stored_event_of_yojson deserialize obj with
+        | Ok e -> Ok e
+        | Error s -> Error (Deserialization (Printf.sprintf "object %i: %s" i s)))
     in
     let stored_events, errors = List.partition_result load_results in
     let events = List.map stored_events ~f:(stored_event_to_event session) in
     match errors with
     | [] -> Ok events
-    | _ -> Error "errors")
+    | [ err ] -> Error err
+    | _ -> Error (Multiple errors))
 ;;
