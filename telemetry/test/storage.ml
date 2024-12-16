@@ -8,7 +8,7 @@ let ok (r : ('ok, _) Result.t) : 'ok = Option.value_exn (Result.ok r)
 
 let storage =
   let tmpdir = Filename.temp_dir "telemetry-test" "" in
-  ok (Storage.create ~root_dir:tmpdir)
+  ok Storage.(create { root_dir = tmpdir })
 ;;
 
 let test_store_load () =
