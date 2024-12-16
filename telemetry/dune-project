@@ -11,6 +11,7 @@
 (package
  (name telemetry)
  (synopsis "Telemetry collection")
+ (allow_empty)
  (depends
   ocaml
   dune
