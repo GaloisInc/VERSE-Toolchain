@@ -6,6 +6,7 @@ type 'data t =
   ; source : string
   ; time : float
   }
+[@@deriving eq, show]
 
 let create ~(source : string) ~(session : Session.t) ~(event_data : 'data) : 'data t =
   let time = Unix.gettimeofday () in

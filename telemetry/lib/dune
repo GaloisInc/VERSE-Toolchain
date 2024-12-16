@@ -2,7 +2,7 @@
  (name telemetry)
  (libraries base ppx_deriving_yojson.runtime unix yojson)
  (preprocess
-  (pps ppx_deriving_yojson)))
+  (pps ppx_deriving.eq ppx_deriving.show ppx_deriving_yojson)))
 
 (env
  (dev
