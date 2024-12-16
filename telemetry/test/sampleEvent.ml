@@ -21,3 +21,4 @@ type t =
 
 let startup : t = { event_type = ServerStart; event_result = None }
 let shutdown : t = { event_type = ServerStop; event_result = None }
+let source : string = "testing"
