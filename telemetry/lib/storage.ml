@@ -36,41 +36,46 @@ let list_sessions (storage : t) : Session.t list =
 ;;
 
 (** The directory in which an event will be stored *)
-let event_dir (storage : t) (session : Session.t) (source : string) : string =
+let event_dir (storage : t) (session : Session.t) : string =
   let session_dir = Session.to_filename session in
-  let source_dir = source in
-  String.concat [ storage.root_dir; session_dir; source_dir ] ~sep:Filename.dir_sep
+  String.concat [ storage.root_dir; session_dir ] ~sep:Filename.dir_sep
 ;;
 
-let event_file (storage : t) (session : Session.t) (source : string) : string =
-  let dir = event_dir storage session source in
+let event_file (storage : t) (session : Session.t) : string =
+  let dir = event_dir storage session in
   let file = "events.json" in
   Filename.concat dir file
 ;;
 
 type 'data stored_event =
   { event_data : 'data
+  ; source : string
   ; time : float
   }
 [@@deriving yojson]
 
-let stored_event_to_event
-  (session : Session.t)
-  (source : string)
-  (stored : 'data stored_event)
+let stored_event_to_event (session : Session.t) (stored : 'data stored_event)
   : 'data Event.t
   =
-  Event.{ event_data = stored.event_data; session; source; time = stored.time }
+  Event.
+    { event_data = stored.event_data
+    ; session
+    ; source = stored.source
+    ; time = stored.time
+    }
+;;
+
+let event_to_stored_event (event : 'data Event.t) : 'data stored_event =
+  { event_data = event.event_data; source = event.source; time = event.time }
 ;;
 
 let store (storage : t) ~(event : 'data Event.t) ~(serialize : 'data -> Yojson.Safe.t)
   : (unit, err) Result.t
   =
-  let dir = event_dir storage event.session event.source in
+  let dir = event_dir storage event.session in
   mkdir_p dir;
-  let event' = { event_data = event.event_data; time = event.time } in
-  let js = stored_event_to_yojson serialize event' in
-  let path = event_file storage event.session event.source in
+  let js = stored_event_to_yojson serialize (event_to_stored_event event) in
+  let path = event_file storage event.session in
   Out_channel.with_open_gen
     [ Open_wronly; Open_append; Open_creat; Open_text ]
     0o644
@@ -80,6 +85,15 @@ let store (storage : t) ~(event : 'data Event.t) ~(serialize : 'data -> Yojson.S
        Ok ())
 ;;
 
+let from_source (source : string) (event_js : Yojson.Safe.t) : Yojson.Safe.t option =
+  try
+    match Yojson.Safe.Util.member "source" event_js with
+    | `String s when String.equal s source -> Some event_js
+    | _ -> None
+  with
+  | _ -> None
+;;
+
 let load_session
   (storage : t)
   ~(source : string)
@@ -87,14 +101,17 @@ let load_session
   ~(deserialize : Yojson.Safe.t -> ('data, string) Result.t)
   : ('data Event.t list, err) Result.t
   =
-  let event_path = event_file storage session source in
+  let event_path = event_file storage session in
   if not (Stdlib.Sys.file_exists event_path)
   then Error "not found"
   else (
-    let records = Stdlib.List.of_seq (Yojson.Safe.seq_from_file event_path) in
-    let load_results = List.map records ~f:(stored_event_of_yojson deserialize) in
+    let all_records = Stdlib.List.of_seq (Yojson.Safe.seq_from_file event_path) in
+    let relevant_records = List.filter_map all_records ~f:(from_source source) in
+    let load_results =
+      List.map relevant_records ~f:(stored_event_of_yojson deserialize)
+    in
     let stored_events, errors = List.partition_result load_results in
-    let events = List.map stored_events ~f:(stored_event_to_event session source) in
+    let events = List.map stored_events ~f:(stored_event_to_event session) in
     match errors with
     | [] -> Ok events
     | _ -> Error "errors")
