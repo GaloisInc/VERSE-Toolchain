@@ -29,7 +29,7 @@ let rec mkdir_p (path : string) : unit =
     mkdir_p path
 ;;
 
-let create (root_dir : string) : (t, err) Result.t =
+let create ~(root_dir : string) : (t, err) Result.t =
   let canonical_root_dir = canonicalize root_dir in
   mkdir_p canonical_root_dir;
   Ok { root_dir = Unix.realpath canonical_root_dir }
