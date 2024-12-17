@@ -159,7 +159,14 @@ function getConfiguredServerContext(): Maybe<ServerContext> {
 
     // In practice, despite the type annotations, `conf.get` seems capable of
     // returning `null` values, so we need to check them
-    if (serverPath !== null && serverPath !== undefined) {
+    if (
+        serverPath !== null &&
+        serverPath !== undefined &&
+        serverPath !== "" &&
+        cerbRuntime !== null &&
+        cerbRuntime !== undefined &&
+        cerbRuntime !== ""
+    ) {
         return { serverPath, cerbRuntime };
     } else {
         return undefined;
