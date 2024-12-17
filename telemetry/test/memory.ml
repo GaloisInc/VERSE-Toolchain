@@ -5,16 +5,13 @@ module Session = Telemetry.Session
 module Storage = Telemetry.Memory.M (SampleEvent)
 
 let ok (r : ('ok, _) Result.t) : 'ok = Option.value_exn (Result.ok r)
-
-let storage =
-  ok Storage.(create ())
-;;
+let storage = ok Storage.(create ())
 
 let test_store_load () =
   let session = Session.custom () in
   let event = Event.create ~session ~event_data:SampleEvent.startup in
   let () = ok (Storage.store storage ~event) in
-  let load_result = ok (Storage.load_session storage ~session) in
+  let load_result = ok (Storage.load_session storage ~session ~source:event.source) in
   Alcotest.(check (list (module Event))) "loaded vs. stored" [ event ] load_result
 ;;
 
@@ -24,7 +21,7 @@ let test_store_load_twice () =
   let event2 = Event.create ~session ~event_data:SampleEvent.shutdown in
   let () = ok (Storage.store storage ~event:event1) in
   let () = ok (Storage.store storage ~event:event2) in
-  let load_result = ok (Storage.load_session storage ~session) in
+  let load_result = ok (Storage.load_session storage ~session ~source:event1.source) in
   Alcotest.(check (list (module Event)))
     "loaded vs. stored"
     [ event1; event2 ]
@@ -38,12 +35,16 @@ let test_store_load_two_sessions () =
   let event2 = Event.create ~session:session2 ~event_data:SampleEvent.shutdown in
   let () = ok (Storage.store storage ~event:event1) in
   let () = ok (Storage.store storage ~event:event2) in
-  let session1_load_result = ok (Storage.load_session storage ~session:session1) in
+  let session1_load_result =
+    ok (Storage.load_session storage ~session:session1 ~source:event1.source)
+  in
   Alcotest.(check (list (module Event)))
     "loaded vs. stored"
     [ event1 ]
     session1_load_result;
-  let session2_load_result = ok (Storage.load_session storage ~session:session2) in
+  let session2_load_result =
+    ok (Storage.load_session storage ~session:session2 ~source:event2.source)
+  in
   Alcotest.(check (list (module Event)))
     "loaded vs. stored"
     [ event2 ]

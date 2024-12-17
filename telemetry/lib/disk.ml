@@ -43,84 +43,91 @@ module M (EventData : EventData.S) :
     Ok { root_dir = Unix.realpath canonical_root_dir }
   ;;
 
-  let list_sessions (storage : t) : Session.t list =
-    let paths = Array.to_list (Stdlib.Sys.readdir storage.root_dir) in
-    List.filter_map paths ~f:Session.of_filename
+  let session_dir (storage : t) (session : Session.t) : string =
+    Filename.concat storage.root_dir (Session.to_filename session)
   ;;
 
-  (** The directory in which an event will be stored *)
-  let event_dir (storage : t) (session : Session.t) : string =
-    let session_dir = Session.to_filename session in
-    String.concat [ storage.root_dir; session_dir ] ~sep:Filename.dir_sep
+  let source_dir (storage : t) (session : Session.t) (source : string) : string =
+    let session_d = session_dir storage session in
+    let source_d = Int.Hex.to_string (Hashable.hash source) in
+    Filename.concat session_d source_d
   ;;
 
-  let event_file (storage : t) (session : Session.t) : string =
-    let dir = event_dir storage session in
-    let file = "events.json" in
-    Filename.concat dir file
+  let source_file (storage : t) (session : Session.t) (source : string) : string =
+    let source_d = source_dir storage session source in
+    Filename.concat source_d "source.json"
+  ;;
+
+  let event_file (storage : t) (session : Session.t) (source : string) : string =
+    let source_d = source_dir storage session source in
+    Filename.concat source_d "events.json"
   ;;
 
   type stored_event =
     { event_data : EventData.t
-    ; source : string
     ; time : float
     }
   [@@deriving yojson]
 
-  let stored_event_to_event (session : Session.t) (stored : stored_event) : event =
-    Event.
-      { event_data = stored.event_data
-      ; session
-      ; source = stored.source
-      ; time = stored.time
-      }
+  let stored_event_to_event
+    (session : Session.t)
+    (source : string)
+    (stored : stored_event)
+    : event
+    =
+    Event.{ event_data = stored.event_data; session; source; time = stored.time }
   ;;
 
   let event_to_stored_event (event : event) : stored_event =
-    { event_data = event.event_data; source = event.source; time = event.time }
+    { event_data = event.event_data; time = event.time }
   ;;
 
-  let store (storage : t) ~(event : event) : (unit, err) Result.t =
-    let dir = event_dir storage event.session in
-    mkdir_p dir;
-    let js = stored_event_to_yojson (event_to_stored_event event) in
-    let path = event_file storage event.session in
+  let store_source (storage : t) (event : event) : unit =
+    let source_d = source_dir storage event.session event.source in
+    mkdir_p source_d;
+    let source_f = source_file storage event.session event.source in
+    Yojson.Safe.to_file source_f (`String event.source)
+  ;;
+
+  let store_event (storage : t) (event : event) : (unit, err) Result.t =
+    let source_d = source_dir storage event.session event.source in
+    mkdir_p source_d;
+    let event_f = event_file storage event.session event.source in
+    let storable_event = event_to_stored_event event in
+    let json = stored_event_to_yojson storable_event in
     Out_channel.with_open_gen
       [ Open_wronly; Open_append; Open_creat; Open_text ]
       0o644
-      path
-      (fun oc ->
+      event_f
+      (fun out_chan ->
          try
-           Yojson.Safe.to_channel ~suf:"\n" oc js;
+           Yojson.Safe.to_channel ~suf:"\n" out_chan json;
            Ok ()
          with
          | Yojson.Json_error s -> Error (Serialization s))
   ;;
 
-  let from_source (event_js : Yojson.Safe.t) : Yojson.Safe.t option =
-    try
-      match Yojson.Safe.Util.member "source" event_js with
-      | `String s when String.equal s EventData.source -> Some event_js
-      | _ -> None
-    with
-    | _ -> None
+  let store (storage : t) ~(event : event) : (unit, err) Result.t =
+    store_source storage event;
+    store_event storage event
   ;;
 
-  let load_session (storage : t) ~(session : Session.t) : (event list, err) Result.t =
-    let event_path = event_file storage session in
-    if not (Stdlib.Sys.file_exists event_path)
-    then Error (FileNotFound event_path)
+  let load_session (storage : t) ~(session : Session.t) ~(source : string)
+    : (event list, err) Result.t
+    =
+    let event_f = event_file storage session source in
+    if not (Stdlib.Sys.file_exists event_f)
+    then Error (FileNotFound event_f)
     else (
-      let all_objs = Stdlib.List.of_seq (Yojson.Safe.seq_from_file event_path) in
-      let relevant_objs = List.filter_map all_objs ~f:from_source in
+      let objs = Stdlib.List.of_seq (Yojson.Safe.seq_from_file event_f) in
       let load_results =
-        List.mapi relevant_objs ~f:(fun i obj ->
+        List.mapi objs ~f:(fun i obj ->
           match stored_event_of_yojson obj with
           | Ok e -> Ok e
           | Error s -> Error (Deserialization (Printf.sprintf "object %i: %s" i s)))
       in
       let stored_events, errors = List.partition_result load_results in
-      let events = List.map stored_events ~f:(stored_event_to_event session) in
+      let events = List.map stored_events ~f:(stored_event_to_event session source) in
       match errors with
       | [] -> Ok events
       | [ err ] -> Error err

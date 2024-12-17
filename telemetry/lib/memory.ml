@@ -18,7 +18,9 @@ module M (EventData : EventData.S) :
     Ok ()
   ;;
 
-  let load_session (storage : t) ~(session : Session.t) : (event list, err) Result.t =
+  let load_session (storage : t) ~(session : Session.t) ~source:(_ : string)
+    : (event list, err) Result.t
+    =
     Ok (List.rev (Hashtbl.find_multi storage.events session))
   ;;
 end

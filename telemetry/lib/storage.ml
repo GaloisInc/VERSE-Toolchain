@@ -8,5 +8,5 @@ module type S = sig
 
   val create : config -> (t, err) Result.t
   val store : t -> event:event -> (unit, err) Result.t
-  val load_session : t -> session:Session.t -> (event list, err) Result.t
+  val load_session : t -> session:Session.t -> source:string -> (event list, err) Result.t
 end
