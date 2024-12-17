@@ -2,20 +2,50 @@ open Base
 
 type cfg = { root_dir : string }
 
+module Session = struct
+  include Session
+
+  let to_filename (session : t) : string =
+    let tag =
+      match session with
+      | Day day -> Printf.sprintf "%i-%i-%i" day.year day.month day.day
+      | Custom { id } -> Int64.to_string id
+    in
+    "session-" ^ tag
+  ;;
+
+  let of_filename (path : string) : t option =
+    match
+      Stdlib.Scanf.sscanf_opt
+        (Stdlib.Filename.basename path)
+        "session-%i-%i-%i"
+        (fun y m d -> y, m, d)
+    with
+    | Some (year, month, day) -> Some (Day { year; month; day })
+    | None ->
+      (match
+         Stdlib.Scanf.sscanf_opt (Stdlib.Filename.basename path) "session-%Li" Fn.id
+       with
+       | Some i -> Some (Custom { id = i })
+       | None -> None)
+  ;;
+end
+
 module M (EventData : EventData.S) :
   Storage.S with type config = cfg and type event = Event.M(EventData).t = struct
   module Filename = Stdlib.Filename
   module Event = Event.M (EventData)
 
-  type config = cfg
   type t = { root_dir : string }
-  type event = Event.t
+  type config = cfg
 
   type err =
     | Deserialization of string
     | Multiple of err list
     | Serialization of string
     | FileNotFound of string
+
+  type event = Event.t
 
   (** Convert a possibly-relative filepath into an absolute one *)
   let canonicalize (path : string) : string =
@@ -82,14 +112,14 @@ module M (EventData : EventData.S) :
     { event_data = event.event_data; time = event.time }
   ;;
 
-  let store_source (storage : t) (event : event) : unit =
+  let write_source_to_file (storage : t) (event : event) : unit =
     let source_d = source_dir storage event.session in
     mkdir_p source_d;
     let source_f = source_file storage event.session in
     Yojson.Safe.to_file source_f (`String EventData.source)
   ;;
 
-  let store_event (storage : t) (event : event) : (unit, err) Result.t =
+  let write_event_to_file (storage : t) (event : event) : (unit, err) Result.t =
     let source_d = source_dir storage event.session in
     mkdir_p source_d;
     let event_f = event_file storage event.session in
@@ -107,12 +137,12 @@ module M (EventData : EventData.S) :
          | Yojson.Json_error s -> Error (Serialization s))
   ;;
 
-  let store (storage : t) ~(event : event) : (unit, err) Result.t =
-    store_source storage event;
-    store_event storage event
+  let store_event (storage : t) ~(event : event) : (unit, err) Result.t =
+    write_source_to_file storage event;
+    write_event_to_file storage event
   ;;
 
-  let load_session (storage : t) ~(session : Session.t) : (event list, err) Result.t =
+  let load_events (storage : t) ~(session : Session.t) : (event list, err) Result.t =
     let event_f = event_file storage session in
     if not (Stdlib.Sys.file_exists event_f)
     then Error (FileNotFound event_f)
