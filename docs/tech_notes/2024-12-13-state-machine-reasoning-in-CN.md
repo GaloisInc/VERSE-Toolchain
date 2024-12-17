@@ -178,7 +178,9 @@ void client_bad_1(struct encrypt_state *e, struct machine_state *s)
 
 ## Using Test Sequencing to Generate Clients
 
-(See [here](TODO) for a longer writeup of the test sequencing tool)
+(See the companion tech note
+[here](./2024-12-13-test-sequence-generation-in-CN.md) for a longer writeup of
+the test sequencing tool)
 
 We can use CN’s test sequencing tool to generate clients. We can both generate
 clients that conform to the state machine, and clients that do not (for the
