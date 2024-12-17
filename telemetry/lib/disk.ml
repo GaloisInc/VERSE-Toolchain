@@ -2,9 +2,12 @@ open Base
 
 type cfg = { root_dir : string }
 
+(** An extension of [Session] that supports a filename-friendly encoding of
+    session values. *)
 module Session = struct
   include Session
 
+  (** Losslessly encode a session as a filename. *)
   let to_filename (session : t) : string =
     let tag =
       match session with
@@ -14,6 +17,7 @@ module Session = struct
     "session-" ^ tag
   ;;
 
+  (** Attempt to decode a filename as a session. *)
   let of_filename (path : string) : t option =
     match
       Stdlib.Scanf.sscanf_opt
@@ -31,8 +35,41 @@ module Session = struct
   ;;
 end
 
+(** Disk-backed storage of events that contain the given [EventData]. *)
 module M (EventData : EventData.S) :
   Storage.S with type config = cfg and type event = Event.M(EventData).t = struct
+  (** With a root directory called "sample", here's how events in two different
+      sessions from two different sources are organized:
+
+      {v
+      sample
+      ├── session-1
+      │   ├── source-1-id
+      │   │   ├── events.json
+      │   │   └── source.json
+      │   └── source-2-id
+      │       ├── events.json
+      │       └── source.json
+      └── session-2
+          ├── source-1-id
+          │   ├── events.json
+          │   └── source.json
+          └── source-2-id
+              ├── events.json
+              └── source.json
+      v}
+
+      [session-*]: a filename-friendly encoding of an individual session.
+
+      [source-*-id]: a filename-friendly encoding of an individual source.
+
+      [events.json]: contains a sequence of JSON-encoded events.
+
+      [source.json]: contains the [EventData]-provided source name, since the
+      filename-friendly encoding is not reversible.
+
+      This is subject to change - it's meant to be informative, not normative. *)
+
   module Filename = Stdlib.Filename
   module Event = Event.M (EventData)
 
@@ -67,32 +104,41 @@ module M (EventData : EventData.S) :
       mkdir_p path
   ;;
 
+  (** Create a storage instance rooted in the [config]-specified directory,
+      creating the directory if it doesn't exist and succeeding if it does. *)
   let create (config : config) : (t, err) Result.t =
     let canonical_root_dir = canonicalize config.root_dir in
     mkdir_p canonical_root_dir;
     Ok { root_dir = Unix.realpath canonical_root_dir }
   ;;
 
+  (** The directory that defines a session. *)
   let session_dir (storage : t) (session : Session.t) : string =
     Filename.concat storage.root_dir (Session.to_filename session)
   ;;
 
+  (** The directory that defines our [EventData]'s source within the given
+      session. *)
   let source_dir (storage : t) (session : Session.t) : string =
     let session_d = session_dir storage session in
     let source_d = Int.Hex.to_string (Hashable.hash EventData.source) in
     Filename.concat session_d source_d
   ;;
 
+  (** The file in which we store our original, [EventData]-provided source name. *)
   let source_file (storage : t) (session : Session.t) : string =
     let source_d = source_dir storage session in
     Filename.concat source_d "source.json"
   ;;
 
+  (** The file in which we store events within the given session from our
+      [EventData]'s source. *)
   let event_file (storage : t) (session : Session.t) : string =
     let source_d = source_dir storage session in
     Filename.concat source_d "events.json"
   ;;
 
+  (** A more minimal event representation suitable for on-disk storage. *)
   type stored_event =
     { event_data : EventData.t
     ; time : float
@@ -112,6 +158,8 @@ module M (EventData : EventData.S) :
     { event_data = event.event_data; time = event.time }
   ;;
 
+  (** Write our [EventData]'s source name to file, creating any intermediate
+      directories necessary to do so. *)
   let write_source_to_file (storage : t) (event : event) : unit =
     let source_d = source_dir storage event.session in
     mkdir_p source_d;
@@ -119,6 +167,8 @@ module M (EventData : EventData.S) :
     Yojson.Safe.to_file source_f (`String EventData.source)
   ;;
 
+  (** Write an event to file, creating any intermediate directories necessary to
+      do so. *)
   let write_event_to_file (storage : t) (event : event) : (unit, err) Result.t =
     let source_d = source_dir storage event.session in
     mkdir_p source_d;
@@ -137,11 +187,13 @@ module M (EventData : EventData.S) :
          | Yojson.Json_error s -> Error (Serialization s))
   ;;
 
+  (** Store the original source string, if necessary, then store the event. *)
   let store_event (storage : t) ~(event : event) : (unit, err) Result.t =
     write_source_to_file storage event;
     write_event_to_file storage event
   ;;
 
+  (** Load the events associated with a given session. *)
   let load_events (storage : t) ~(session : Session.t) : (event list, err) Result.t =
     let event_f = event_file storage session in
     if not (Stdlib.Sys.file_exists event_f)

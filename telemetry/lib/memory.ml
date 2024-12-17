@@ -1,5 +1,7 @@
 open Base
 
+(** In-memory storage of events that contain the given [EventData]. Basically a
+    glorified list. *)
 module M (EventData : EventData.S) :
   Storage.S with type config = unit and type event = Event.M(EventData).t = struct
   module Event = Event.M (EventData)

@@ -1,5 +1,6 @@
 (library
  (name telemetry)
+ (public_name telemetry)
  (libraries
   base
   ppx_deriving_yojson.runtime
