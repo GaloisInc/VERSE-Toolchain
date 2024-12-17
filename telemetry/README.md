@@ -8,12 +8,13 @@ Here's an annotated unit test of a single store-load workflow to illustrate how
 a client might interact with this package:
 ```ocaml
 (* Instantiate [Event] and [Storage] modules to hold events with data described
-   by the [SampleEvent] module *)
+   by the [SampleEvent] module and profile data described by the [SampleProfile]
+   module *)
 module Event = Telemetry.Event.M (SampleEvent)
 module Session = Telemetry.Session
-module Storage = Telemetry.Disk.M (SampleEvent)
+module Storage = Telemetry.Disk.M (SampleEvent) (SampleProfile)
 
-let test_store_load () =
+let test_store_load_event () =
   (* Create [session], a new [Session.t] to index events *)
   let session = Session.custom () in
   
