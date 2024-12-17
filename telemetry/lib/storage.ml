@@ -14,6 +14,8 @@ module type S = sig
   (** The type of events stored in this instance. *)
   type event
 
+  type profile
+
   (** Create a new storage instance *)
   val create : config -> (t, err) Result.t
 
@@ -24,4 +26,13 @@ module type S = sig
 
   (** Load previously-stored events associated with a given session. *)
   val load_events : t -> session:Session.t -> (event list, err) Result.t
+
+  (** Store profile information for later loading, returning any profile
+      information that was overwritten. The profile should persist as long as
+      the storage object exists, or until it's overwritten, but whether it
+      persists for longer is implementation-defined. *)
+  val store_profile : t -> profile:profile -> (profile option, err) Result.t
+
+  (** Load any previously-stored profile information. *)
+  val load_profile : t -> (profile option, err) Result.t
 end

@@ -36,13 +36,17 @@ module Session = struct
 end
 
 (** Disk-backed storage of events that contain the given [EventData]. *)
-module M (EventData : EventData.S) :
-  Storage.S with type config = cfg and type event = Event.M(EventData).t = struct
+module M (EventData : EventData.S) (ProfileData : ProfileData.S) :
+  Storage.S
+  with type config = cfg
+   and type event = Event.M(EventData).t
+   and type profile = ProfileData.t = struct
   (** With a root directory called "sample", here's how events in two different
       sessions from two different sources are organized:
 
       {v
       sample
+      ├── profile.json
       ├── session-1
       │   ├── source-1-id
       │   │   ├── events.json
@@ -58,6 +62,9 @@ module M (EventData : EventData.S) :
               ├── events.json
               └── source.json
       v}
+
+      [profile.json]: contains user profile information provided in storage
+      configuration.
 
       [session-*]: a filename-friendly encoding of an individual session.
 
@@ -83,6 +90,7 @@ module M (EventData : EventData.S) :
     | FileNotFound of string
 
   type event = Event.t
+  type profile = ProfileData.t
 
   (** Convert a possibly-relative filepath into an absolute one *)
   let canonicalize (path : string) : string =
@@ -110,6 +118,11 @@ module M (EventData : EventData.S) :
     let canonical_root_dir = canonicalize config.root_dir in
     mkdir_p canonical_root_dir;
     Ok { root_dir = Unix.realpath canonical_root_dir }
+  ;;
+
+  (** The file in which we store profile information. *)
+  let profile_file (storage : t) : string =
+    Filename.concat storage.root_dir "profile.json"
   ;;
 
   (** The directory that defines a session. *)
@@ -212,5 +225,35 @@ module M (EventData : EventData.S) :
       | [] -> Ok events
       | [ err ] -> Error err
       | _ -> Error (Multiple errors))
+  ;;
+
+  (** Attempt to read profile information from disk. *)
+  let load_profile (storage : t) : (profile option, err) Result.t =
+    let ( let@ ) x f = Result.bind x ~f in
+    let profile_f = profile_file storage in
+    if not (Stdlib.Sys.file_exists profile_f)
+    then Ok None
+    else
+      let@ json =
+        try Ok (Yojson.Safe.from_file profile_f) with
+        | Yojson.Json_error e ->
+          Error (Deserialization (Printf.sprintf "profile file: %s" e))
+      in
+      match ProfileData.of_yojson json with
+      | Error e -> Error (Deserialization (Printf.sprintf "profile object: %s" e))
+      | Ok profile -> Ok (Some profile)
+  ;;
+
+  (** Write profile information to disk. *)
+  let store_profile (storage : t) ~(profile : profile) : (profile option, err) Result.t =
+    let existing_profile =
+      match load_profile storage with
+      | Ok (Some existing) -> Some existing
+      | Ok None | Error _ -> None
+    in
+    let profile_f = profile_file storage in
+    let json = ProfileData.to_yojson profile in
+    Yojson.Safe.to_file profile_f json;
+    Ok existing_profile
   ;;
 end
