@@ -64,3 +64,15 @@ jobs:
       - name: Run server tests
         working-directory: cn-lsp/server
         run: eval $(opam env) && dune test
+
+      - name: Install server
+        # if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+        working-directory: cn-lsp/server
+        run: opam install . -y
+
+      - name: Upload server binary
+        # if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cn-lsp-server-${{ matrix.os }}
+          path: cn-lsp/server/_opam/bin/cn-lsp-server
