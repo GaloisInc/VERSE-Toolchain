@@ -47,19 +47,19 @@ module M (EventData : EventData.S) :
     Filename.concat storage.root_dir (Session.to_filename session)
   ;;
 
-  let source_dir (storage : t) (session : Session.t) (source : string) : string =
+  let source_dir (storage : t) (session : Session.t) : string =
     let session_d = session_dir storage session in
-    let source_d = Int.Hex.to_string (Hashable.hash source) in
+    let source_d = Int.Hex.to_string (Hashable.hash EventData.source) in
     Filename.concat session_d source_d
   ;;
 
-  let source_file (storage : t) (session : Session.t) (source : string) : string =
-    let source_d = source_dir storage session source in
+  let source_file (storage : t) (session : Session.t) : string =
+    let source_d = source_dir storage session in
     Filename.concat source_d "source.json"
   ;;
 
-  let event_file (storage : t) (session : Session.t) (source : string) : string =
-    let source_d = source_dir storage session source in
+  let event_file (storage : t) (session : Session.t) : string =
+    let source_d = source_dir storage session in
     Filename.concat source_d "events.json"
   ;;
 
@@ -69,13 +69,13 @@ module M (EventData : EventData.S) :
     }
   [@@deriving yojson]
 
-  let stored_event_to_event
-    (session : Session.t)
-    (source : string)
-    (stored : stored_event)
-    : event
-    =
-    Event.{ event_data = stored.event_data; session; source; time = stored.time }
+  let stored_event_to_event (session : Session.t) (stored : stored_event) : event =
+    Event.
+      { event_data = stored.event_data
+      ; session
+      ; source = EventData.source
+      ; time = stored.time
+      }
   ;;
 
   let event_to_stored_event (event : event) : stored_event =
@@ -83,16 +83,16 @@ module M (EventData : EventData.S) :
   ;;
 
   let store_source (storage : t) (event : event) : unit =
-    let source_d = source_dir storage event.session event.source in
+    let source_d = source_dir storage event.session in
     mkdir_p source_d;
-    let source_f = source_file storage event.session event.source in
-    Yojson.Safe.to_file source_f (`String event.source)
+    let source_f = source_file storage event.session in
+    Yojson.Safe.to_file source_f (`String EventData.source)
   ;;
 
   let store_event (storage : t) (event : event) : (unit, err) Result.t =
-    let source_d = source_dir storage event.session event.source in
+    let source_d = source_dir storage event.session in
     mkdir_p source_d;
-    let event_f = event_file storage event.session event.source in
+    let event_f = event_file storage event.session in
     let storable_event = event_to_stored_event event in
     let json = stored_event_to_yojson storable_event in
     Out_channel.with_open_gen
@@ -112,10 +112,8 @@ module M (EventData : EventData.S) :
     store_event storage event
   ;;
 
-  let load_session (storage : t) ~(session : Session.t) ~(source : string)
-    : (event list, err) Result.t
-    =
-    let event_f = event_file storage session source in
+  let load_session (storage : t) ~(session : Session.t) : (event list, err) Result.t =
+    let event_f = event_file storage session in
     if not (Stdlib.Sys.file_exists event_f)
     then Error (FileNotFound event_f)
     else (
@@ -127,7 +125,7 @@ module M (EventData : EventData.S) :
           | Error s -> Error (Deserialization (Printf.sprintf "object %i: %s" i s)))
       in
       let stored_events, errors = List.partition_result load_results in
-      let events = List.map stored_events ~f:(stored_event_to_event session source) in
+      let events = List.map stored_events ~f:(stored_event_to_event session) in
       match errors with
       | [] -> Ok events
       | [ err ] -> Error err
