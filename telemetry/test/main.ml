@@ -1,1 +1,1 @@
-let () = Alcotest.run "telemetry" [ "Disk", Disk.tests ]
+let () = Alcotest.run "telemetry" [ "Disk", Disk.tests; "Memory", Memory.tests ]

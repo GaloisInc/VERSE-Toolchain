@@ -7,7 +7,7 @@ type t =
       ; day : int
       }
   | Custom of { id : Int64.t }
-[@@deriving eq, show]
+[@@deriving eq, hash, ord, sexp, show]
 
 let today () : t =
   let tm = Unix.(gmtime (time ())) in
