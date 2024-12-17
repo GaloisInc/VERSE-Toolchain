@@ -2,7 +2,7 @@ open Base
 module Filename = Stdlib.Filename
 module Event = Telemetry.Event.M (SampleEvent)
 module Session = Telemetry.Session
-module Storage = Telemetry.Storage.M (SampleEvent)
+module Storage = Telemetry.Disk.M (SampleEvent)
 
 let ok (r : ('ok, _) Result.t) : 'ok = Option.value_exn (Result.ok r)
 
