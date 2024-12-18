@@ -5,30 +5,43 @@ version: "0.0.1"
 maintainer: "Sam Cowger"
 authors: "Sam Cowger"
 depends: [
+  "alcotest" {= "1.8.0"}
+  "astring" {= "0.8.5"}
   "base" {= "v0.17.1"}
   "base-bigarray" {= "base"}
   "base-domains" {= "base"}
   "base-nnp" {= "base"}
   "base-threads" {= "base"}
   "base-unix" {= "base"}
+  "cmdliner" {= "1.3.0"}
   "cppo" {= "1.7.0"}
   "csexp" {= "1.5.2"}
   "dune" {= "3.16.1"}
   "dune-configurator" {= "3.16.1"}
+  "fmt" {= "0.9.0"}
   "ocaml" {= "5.1.1"}
   "ocaml-base-compiler" {= "5.1.1"}
   "ocaml-compiler-libs" {= "v0.12.4"}
   "ocaml-config" {= "3"}
   "ocaml-options-vanilla" {= "1"}
+  "ocaml-syntax-shims" {= "1.0.0"}
   "ocaml_intrinsics_kernel" {= "v0.17.1"}
+  "ocamlbuild" {= "0.15.0"}
   "ocamlfind" {= "1.9.6"}
+  "ppx_compare" {= "v0.17.0"}
   "ppx_derivers" {= "1.2.1"}
   "ppx_deriving" {= "6.0.3"}
   "ppx_deriving_yojson" {= "3.9.0"}
+  "ppx_hash" {= "v0.17.0"}
+  "ppx_sexp_conv" {= "v0.17.0"}
   "ppxlib" {= "0.33.0"}
+  "ppxlib_jane" {= "v0.17.0"}
+  "re" {= "1.12.0"}
   "seq" {= "base"}
   "sexplib0" {= "v0.17.0"}
   "stdlib-shims" {= "0.3.0"}
+  "topkg" {= "1.0.7"}
+  "uutf" {= "1.0.3"}
   "yojson" {= "2.2.2"}
 ]
 build: [

@@ -6,8 +6,11 @@ authors: ["Sam Cowger"]
 depends: [
   "ocaml"
   "dune" {>= "3.16"}
+  "alcotest" {>= "1.6.0" & < "2.0.0"}
   "base" {>= "v0.16.3" & < "v0.18"}
   "ppx_deriving_yojson" {>= "3.0.0" & < "4.0.0"}
+  "ppx_hash" {>= "v0.16.3" & < "v0.18"}
+  "ppx_sexp_conv" {>= "v0.16.3" & < "v0.18"}
   "yojson" {>= "2.0.0" & < "3.0.0"}
   "odoc" {with-doc}
 ]
