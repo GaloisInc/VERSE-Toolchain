@@ -32,9 +32,9 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install client dependencies
-        working-directory: ./cn-lsp/client
+        working-directory: ./cn-client
         run: npm install
 
       - name: Build client
-        working-directory: ./cn-lsp/client
+        working-directory: ./cn-client
         run: npm run compile
