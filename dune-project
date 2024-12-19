@@ -9,7 +9,7 @@
 (maintainers "Sam Cowger")
 
 (package
- (name cnlsp)
+ (name cn-lsp)
  (synopsis "CN Language Server")
  (description
   "A language server protocol implementation for the CN language")
