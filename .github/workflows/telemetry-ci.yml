@@ -1,0 +1,62 @@
+name: Telemetry CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Cancel in-progress job when a new push is performed
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        ocaml-version: [5.1.1]
+        os: [ubuntu-22.04]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-version }}
+
+      - name: Restore `_opam`
+        id: cache-opam-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: telemetry/_opam
+          key: ${{ matrix.ocaml-version }}-${{ hashFiles('telemetry/telemetry.opam.locked') }}
+
+      - name: Install telemetry dependencies
+        working-directory: telemetry
+        # If we restored a `_opam` directory here, we need not (and should not)
+        # try to create a switch. The presence of `_opam` seems basically
+        # isomorphic to the presence of a switch, and opam will fail to `create`
+        # a new switch if one is already present.
+        run: ls _opam || opam switch create . ocaml.${{ matrix.ocaml-version }} --deps-only --locked -y
+
+      - name: Cache `_opam`
+        if: steps.cache-opam-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: telemetry/_opam
+          key: ${{ steps.cache-opam-restore.outputs.cache-primary-key }}
+
+      - name: Build telemetry
+        working-directory: telemetry
+        run: eval $(opam env) && dune build
+
+      - name: Run telemetry tests
+        working-directory: telemetry
+        run: eval $(opam env) && dune test

@@ -1,0 +1,41 @@
+(lang dune 3.16)
+
+(name telemetry)
+
+(generate_opam_files true)
+
+(authors "Sam Cowger")
+
+(maintainers "Sam Cowger")
+
+(package
+ (name telemetry)
+ (synopsis "Telemetry collection")
+ (allow_empty)
+ (depends
+  ocaml
+  dune
+  (alcotest
+   (and
+    (>= 1.6.0)
+    (< 2.0.0)))
+  (base
+   (and
+    (>= v0.16.3)
+    (< v0.18)))
+  (ppx_deriving_yojson
+   (and
+    (>= 3.0.0)
+    (< 4.0.0)))
+  (ppx_hash
+   (and
+    (>= v0.16.3)
+    (< v0.18)))
+  (ppx_sexp_conv
+   (and
+    (>= v0.16.3)
+    (< v0.18)))
+  (yojson
+   (and
+    (>= 2.0.0)
+    (< 3.0.0)))))
