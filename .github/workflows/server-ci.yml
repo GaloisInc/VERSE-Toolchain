@@ -32,35 +32,15 @@ jobs:
           ocaml-compiler: ${{ matrix.ocaml-version }}
 
       - name: Link lockfile
-        working-directory: cn-lsp/server
-        run: ln -s cnlsp.opam.locked-${{ matrix.ocaml-version }} cnlsp.opam.locked
-
-      - name: Restore `_opam`
-        id: cache-opam-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: cn-lsp/server/_opam
-          key: ${{ matrix.ocaml-version }}-${{ hashFiles('cn-lsp/server/cnlsp.opam.locked') }}
+        run: ln -s cn-lsp.opam.locked-${{ matrix.ocaml-version }} cn-lsp.opam.locked
 
       - name: Install server dependencies
-        working-directory: cn-lsp/server
-        # If we restored a `_opam` directory here, we need not (and should not)
-        # try to create a switch. The presence of `_opam` seems basically
-        # isomorphic to the presence of a switch, and opam will fail to `create`
-        # a new switch if one is already present.
-        run: ls _opam || opam switch create . ocaml.${{ matrix.ocaml-version }} --deps-only --locked -y
-
-      - name: Cache `_opam`
-        if: steps.cache-opam-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: cn-lsp/server/_opam
-          key: ${{ steps.cache-opam-restore.outputs.cache-primary-key }}
+        run: opam install ./cn-lsp.opam --deps-only --locked -y
 
       - name: Build server
-        working-directory: cn-lsp/server
+        working-directory: ./cn-lsp
         run: eval $(opam env) && dune build
 
       - name: Run server tests
-        working-directory: cn-lsp/server
+        working-directory: ./cn-lsp
         run: eval $(opam env) && dune test

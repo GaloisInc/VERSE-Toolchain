@@ -1,6 +1,6 @@
-(lang dune 3.12)
+(lang dune 3.16)
 
-(name cnlsp)
+(name verse-toolchain)
 
 (generate_opam_files true)
 
@@ -9,7 +9,7 @@
 (maintainers "Sam Cowger")
 
 (package
- (name cnlsp)
+ (name cn-lsp)
  (synopsis "CN Language Server")
  (description
   "A language server protocol implementation for the CN language")
@@ -50,3 +50,35 @@
    (and
     (>= 1.17.0)
     (< 2.0.0)))))
+
+(package
+ (name telemetry)
+ (synopsis "Telemetry collection")
+ (allow_empty)
+ (depends
+  ocaml
+  dune
+  (alcotest
+   (and
+    (>= 1.6.0)
+    (< 2.0.0)))
+  (base
+   (and
+    (>= v0.16.3)
+    (< v0.18)))
+  (ppx_deriving_yojson
+   (and
+    (>= 3.0.0)
+    (< 4.0.0)))
+  (ppx_hash
+   (and
+    (>= v0.16.3)
+    (< v0.18)))
+  (ppx_sexp_conv
+   (and
+    (>= v0.16.3)
+    (< v0.18)))
+  (yojson
+   (and
+    (>= 2.0.0)
+    (< 3.0.0)))))

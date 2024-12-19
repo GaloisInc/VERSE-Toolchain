@@ -1,2 +1,4 @@
 .DS_Store
 *.swp
+_build
+_opam
