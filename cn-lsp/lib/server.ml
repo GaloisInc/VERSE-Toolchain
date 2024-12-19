@@ -1,5 +1,4 @@
 open! Base
-
 module Json = Yojson.Safe
 
 (* Linol *)
@@ -36,22 +35,18 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
 
 module Config = struct
   (** The client controls these options, and sends them at a server's request *)
-  type t = { run_CN_on_save : bool }
+  type t = { run_CN_on_save : bool [@key "runOnSave"] }
+  [@@deriving yojson { strict = false }]
+  (* `strict = false` to account for extra configuration fields the client
+     defines but which the server doesn't care about (e.g., at the moment,
+     "cerbRuntime"). There's probably a more idiomatic way to handle this - have
+     the client put such fields in a different "section", perhaps? *)
 
   (** The name of the configuration "section" the client uses to identify
       CN-specific settings *)
   let section : string = "CN"
 
   let default : t = { run_CN_on_save = false }
-
-  let t_of_yojson (json : Json.t) : t option =
-    let open Json.Util in
-    try
-      let run_CN_on_save = json |> member "runOnSave" |> to_bool in
-      Some { run_CN_on_save }
-    with
-    | _ -> None
-  ;;
 end
 
 let sprintf = Printf.sprintf
@@ -160,13 +155,9 @@ class lsp_server (env : LspCn.cerb_env) =
     (** Set the server's configuration to the provided, JSON-encoded
         configuration *)
     method set_configuration (config_section : Json.t) : unit =
-      match Config.t_of_yojson config_section with
-      | None ->
-        Log.e
-          (sprintf
-             "Unrecognized config section, ignoring: %s"
-             (Json.to_string config_section))
-      | Some cfg ->
+      match Config.of_yojson config_section with
+      | Error err -> Log.e (sprintf "Failed to decode config: %s" err)
+      | Ok cfg ->
         let () =
           Log.d (sprintf "Replacing config with: %s" (Json.to_string config_section))
         in
