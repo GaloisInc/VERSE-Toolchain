@@ -1,6 +1,6 @@
 (library
  (name cnlsp)
- (libraries base cn linol linol-lwt lsp))
+ (libraries base cn linol linol-lwt lsp telemetry))
 
 (env
  (dev
