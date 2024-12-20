@@ -79,8 +79,10 @@ class lsp_server (env : LspCn.cerb_env) =
       (doc : TextDocumentItem.t)
       ~content:(_ : string)
       : unit IO.t =
-      let msg = "Opened document: " ^ DocumentUri.to_string doc.uri in
-      let () = Log.d msg in
+      let uri = DocumentUri.to_string doc.uri in
+      Log.d (sprintf "Opened document %s" uri);
+      let event_data = EventData.{ event_type = OpenFile uri; event_result = None } in
+      self#record_telemetry event_data;
       IO.return ()
 
     (* Required *)
@@ -98,8 +100,10 @@ class lsp_server (env : LspCn.cerb_env) =
       ~notify_back:(_ : Rpc.notify_back)
       (doc : TextDocumentIdentifier.t)
       : unit IO.t =
-      let msg = "Closed document: " ^ DocumentUri.to_string doc.uri in
-      let () = Log.d msg in
+      let uri = DocumentUri.to_string doc.uri in
+      Log.d (sprintf "Closed document %s" uri);
+      let event_data = EventData.{ event_type = CloseFile uri; event_result = None } in
+      self#record_telemetry event_data;
       IO.return ()
 
     method on_notif_doc_did_save
@@ -118,6 +122,8 @@ class lsp_server (env : LspCn.cerb_env) =
       (match server_config.telemetry_dir with
        | None -> ()
        | Some dir -> self#initialize_telemetry dir);
+      let event_data = EventData.{ event_type = ServerStart; event_result = None } in
+      self#record_telemetry event_data;
       let* () = self#register_did_change_configuration notify_back in
       return ()
 
@@ -265,6 +271,24 @@ class lsp_server (env : LspCn.cerb_env) =
       match Storage.(create { root_dir = dir }) with
       | Error _e -> Log.e "Unable to create telemetry storage"
       | Ok storage -> telemetry_storage <- Some storage
+
+    method record_telemetry (event_data : EventData.t) : unit =
+      match server_config.telemetry_dir, telemetry_storage with
+      (* No telemetry directory has been configured *)
+      | None, _ -> ()
+      (* A directory has been configured, but for some reason we haven't
+         initialized telemetry storage *)
+      | Some dir, None -> self#initialize_telemetry dir
+      (* A directory has been configured and we've initialized storage. Don't
+         check that the directory and initialized storage match, because we only
+         promise to initialize storage based on the directory configured at
+         startup. *)
+      | Some _, Some storage ->
+        let session = Telemetry.Session.today () in
+        let event = Event.create ~session ~event_data in
+        (match Storage.store_event storage ~event with
+         | Ok () -> ()
+         | Error _e -> Log.e "couldn't store event")
 
     method clear_diagnostics_for
       (notify_back : Rpc.notify_back)
