@@ -23,6 +23,12 @@ module TextDocumentIdentifier = Lsp.Types.TextDocumentIdentifier
 module TextDocumentItem = Lsp.Types.TextDocumentItem
 module VersionedTextDocumentIdentifier = Lsp.Types.VersionedTextDocumentIdentifier
 
+(* Telemetry *)
+module EventData = ServerTelemetry.EventData
+module ProfileData = ServerTelemetry.ProfileData
+module Event = Telemetry.Event.M (EventData)
+module Storage = Telemetry.Disk.M (EventData) (ProfileData)
+
 let cwindow (level : MessageType.t) (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   let params = ShowMessageParams.create ~message:msg ~type_:level in
   let msg = Lsp.Server_notification.ShowMessage params in
@@ -58,6 +64,7 @@ class lsp_server (env : LspCn.cerb_env) =
   object (self)
     val env : LspCn.cerb_env = env
     val mutable server_config : Config.t = Config.default
+    val mutable telemetry_storage : Storage.t option = None
     inherit Rpc.server
 
     (* Required *)
@@ -108,6 +115,9 @@ class lsp_server (env : LspCn.cerb_env) =
       let open IO in
       let* cfg = self#fetch_configuration notify_back in
       server_config <- cfg;
+      (match server_config.telemetry_dir with
+       | None -> ()
+       | Some dir -> self#initialize_telemetry dir);
       let* () = self#register_did_change_configuration notify_back in
       return ()
 
@@ -124,8 +134,15 @@ class lsp_server (env : LspCn.cerb_env) =
          | Error err -> failwith (sprintf "Failed to decode config: %s" err)
          | Ok cfg ->
            Log.d (sprintf "Replacing config with: %s" (Json.to_string config_section));
+           let old_telemetry_dir = server_config.telemetry_dir in
            server_config <- cfg;
-           return ())
+           let new_telemetry_dir = server_config.telemetry_dir in
+           if not (Option.equal String.equal old_telemetry_dir new_telemetry_dir)
+           then
+             cinfo
+               notify_back
+               "Restart server for changes to telemetry configuration to take effect"
+           else return ())
       | _ ->
         let s =
           Json.to_string (Jsonrpc.Notification.yojson_of_t (CNotif.to_jsonrpc notif))
@@ -243,6 +260,11 @@ class lsp_server (env : LspCn.cerb_env) =
            return ()
          | Some (diag_uri, diag) ->
            self#publish_diagnostics_for notify_back diag_uri [ diag ])
+
+    method initialize_telemetry (dir : string) : unit =
+      match Storage.(create { root_dir = dir }) with
+      | Error _e -> Log.e "Unable to create telemetry storage"
+      | Ok storage -> telemetry_storage <- Some storage
 
     method clear_diagnostics_for
       (notify_back : Rpc.notify_back)
