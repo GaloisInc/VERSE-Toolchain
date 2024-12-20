@@ -106,7 +106,8 @@ class lsp_server (env : LspCn.cerb_env) =
 
     method on_notif_initialized (notify_back : Rpc.notify_back) : unit IO.t =
       let open IO in
-      let* () = self#fetch_configuration notify_back in
+      let* cfg = self#fetch_configuration notify_back in
+      server_config <- cfg;
       let* () = self#register_did_change_configuration notify_back in
       return ()
 
@@ -119,8 +120,12 @@ class lsp_server (env : LspCn.cerb_env) =
       | CNotif.Initialized -> self#on_notif_initialized notify_back
       | CNotif.ChangeConfiguration params ->
         let config_section = params.settings |> Json.Util.member Config.section in
-        let () = self#set_configuration config_section in
-        return ()
+        (match Config.of_yojson config_section with
+         | Error err -> failwith (sprintf "Failed to decode config: %s" err)
+         | Ok cfg ->
+           Log.d (sprintf "Replacing config with: %s" (Json.to_string config_section));
+           server_config <- cfg;
+           return ())
       | _ ->
         let s =
           Json.to_string (Jsonrpc.Notification.yojson_of_t (CNotif.to_jsonrpc notif))
@@ -155,43 +160,36 @@ class lsp_server (env : LspCn.cerb_env) =
     (***************************************************************)
     (***  Other  ***************************************************)
 
-    (** Set the server's configuration to the provided, JSON-encoded
-        configuration *)
-    method set_configuration (config_section : Json.t) : unit =
-      match Config.of_yojson config_section with
-      | Error err -> Log.e (sprintf "Failed to decode config: %s" err)
-      | Ok cfg ->
-        let () =
-          Log.d (sprintf "Replacing config with: %s" (Json.to_string config_section))
-        in
-        server_config <- cfg
-
-    (** Fetch the client's current configuration and update the server's version
-        of it to match *)
-    method fetch_configuration (notify_back : Rpc.notify_back) : unit IO.t =
+    (** Fetch the client's current configuration *)
+    method fetch_configuration (notify_back : Rpc.notify_back) : Config.t IO.t =
       let open IO in
       let section = ConfigurationItem.create ~section:Config.section () in
       let params = ConfigurationParams.create ~items:[ section ] in
       let req = SReq.WorkspaceConfiguration params in
+      let cfg_promise, cfg_resolver = Lwt.task () in
       let handle (response : (Json.t list, Jsonrpc.Response.Error.t) Result.t) : unit IO.t
         =
-        let () =
+        let cfg_res =
           match response with
-          | Ok [ section ] -> self#set_configuration section
-          | Ok [] -> Log.w "No CN config section found"
+          | Ok [] -> Error "No CN config section found"
+          | Ok [ section ] -> Config.of_yojson section
           | Ok sections ->
             let ss = String.concat ~sep:"," (List.map sections ~f:Json.to_string) in
-            Log.e (sprintf "Too many config sections: [%s]" ss)
+            Error (sprintf "Too many config sections: [%s]" ss)
           | Error e ->
-            Log.e
+            Error
               (sprintf
                  "Client responded with error: %s"
                  (Json.to_string (Jsonrpc.Response.Error.yojson_of_t e)))
         in
-        return ()
+        match cfg_res with
+        | Ok cfg ->
+          Lwt.wakeup_later cfg_resolver cfg;
+          return ()
+        | Error s -> failwith s
       in
       let _id = notify_back#send_request req handle in
-      return ()
+      cfg_promise
 
     (** "Register" for a given client capability *)
     method register_capability
