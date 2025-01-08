@@ -44,7 +44,7 @@ function expects to produce and/or consume.
 
 Here's an example of how this could look:
 
-<img src="./0001-resource-hover/fn-id-hover.png" width="500">
+<img src="./resource-hover/fn-id-hover.png" width="500">
 
 (These tooltips support Markdown, so we should be able to style the information
 to our liking. Of note, this image shows C syntax highlighting for the

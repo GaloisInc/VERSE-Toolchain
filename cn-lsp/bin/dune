@@ -1,7 +1,7 @@
 (executable
  (public_name cn-lsp-server)
  (name main)
- (package cnlsp)
+ (package cn-lsp)
  (libraries cnlsp logs lsp))
 
 (env

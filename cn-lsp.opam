@@ -5,7 +5,7 @@ description: "A language server protocol implementation for the CN language"
 maintainer: ["Sam Cowger"]
 authors: ["Sam Cowger"]
 depends: [
-  "dune" {>= "3.12"}
+  "dune" {>= "3.16"}
   "ocaml" {>= "4.14.1" & < "6.0.0"}
   "base" {>= "v0.16.3" & < "v0.18"}
   "cerberus" {= "b9daa22"}
