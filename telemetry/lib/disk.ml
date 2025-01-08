@@ -19,19 +19,18 @@ module Session = struct
 
   (** Attempt to decode a filename as a session. *)
   let of_filename (path : string) : t option =
-    match
-      Stdlib.Scanf.sscanf_opt
+    try
+      Stdlib.Scanf.sscanf
         (Stdlib.Filename.basename path)
         "session-%i-%i-%i"
-        (fun y m d -> y, m, d)
+        (fun year month day -> Some (Day { year; month; day }))
     with
-    | Some (year, month, day) -> Some (Day { year; month; day })
-    | None ->
-      (match
-         Stdlib.Scanf.sscanf_opt (Stdlib.Filename.basename path) "session-%Li" Fn.id
+    | Stdlib.Scanf.Scan_failure _ ->
+      (try
+         Stdlib.Scanf.sscanf (Stdlib.Filename.basename path) "session-%Li" (fun id ->
+           Some (Custom { id }))
        with
-       | Some i -> Some (Custom { id = i })
-       | None -> None)
+       | Stdlib.Scanf.Scan_failure _ -> None)
   ;;
 end
 

@@ -6,8 +6,28 @@ module Storage = Telemetry.Disk.M (SampleEvent) (SampleProfile)
 
 let ok (r : ('ok, _) Result.t) : 'ok = Option.value_exn (Result.ok r)
 
+(* A rough copy of [Filename.temp_dir] to allow building with OCaml versions
+   prior to 5.1 *)
+let make_temp_dir (prefix : string) (suffix : string) : string =
+  let temp_dir = Filename.get_temp_dir_name () in
+  let temp_file_name prefix suffix =
+    let rnd = Stdlib.Random.bits () land 0xFFFFFF in
+    Filename.concat temp_dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
+  in
+  let rec try_make tries =
+    let name = temp_file_name prefix suffix in
+    let perms = 0o700 in
+    try
+      Stdlib.Sys.mkdir name perms;
+      name
+    with
+    | Sys_error _ as e -> if tries >= 20 then raise e else try_make (tries + 1)
+  in
+  try_make 0
+;;
+
 let storage =
-  let tmpdir = Filename.temp_dir "telemetry-test" "" in
+  let tmpdir = make_temp_dir "telemetry-test" "" in
   ok Storage.(create { root_dir = tmpdir })
 ;;
 

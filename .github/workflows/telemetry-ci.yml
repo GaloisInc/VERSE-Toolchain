@@ -17,7 +17,7 @@ jobs:
   build:
     strategy:
       matrix:
-        ocaml-version: [5.1.1]
+        ocaml-version: [4.14.1, 5.1.1]
         os: [ubuntu-22.04]
 
     runs-on: ${{ matrix.os }}
@@ -30,6 +30,9 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
+
+      - name: Link lockfile
+        run: ln -s telemetry.opam.locked-${{ matrix.ocaml-version }} telemetry.opam.locked
 
       - name: Install telemetry dependencies
         run: opam install ./telemetry.opam --deps-only --locked -y
