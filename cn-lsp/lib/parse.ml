@@ -96,16 +96,27 @@ let document_source_comments (uri : Uri.t) (source : string)
   : (Range.t list, string) Result.t
   =
   let lexbuf = Lexing.from_string source in
-  Lexing.set_filename lexbuf (Uri.to_path uri);
+  let path = Uri.to_path uri in
+  Lexing.set_filename lexbuf path;
   CF.Switches.set [ "at_magic_comments" ];
   let (`LEXER lexer) = C_lexer.create_lexer ~inside_cn:true in
   let rec lex ranges =
     try
       match lexer lexbuf with
-      | Tokens.CERB_MAGIC (comment_loc, _) ->
-        let range = comment_block_range comment_loc in
-        lex (range :: ranges)
-      | Tokens.EOF -> Ok (List.rev ranges)
+      | CERB_MAGIC (comment_loc, _) ->
+        (* As opposed to an `#include`d file *)
+        let from_our_file =
+          Option.value_map
+            (Cerb_location.get_filename comment_loc)
+            ~default:false
+            ~f:(String.equal path)
+        in
+        if from_our_file
+        then (
+          let range = comment_block_range comment_loc in
+          lex (range :: ranges))
+        else lex ranges
+      | EOF -> Ok (List.rev ranges)
       | _ -> lex ranges
     with
     | C_lexer.Error err -> Error (CF.Pp_errors.string_of_cparser_cause err)
