@@ -9,6 +9,7 @@ module IO = Rpc.IO
 module CNotif = Lsp.Client_notification
 module ConfigurationItem = Lsp.Types.ConfigurationItem
 module ConfigurationParams = Lsp.Types.ConfigurationParams
+module CReq = Lsp.Client_request
 module Diagnostic = Lsp.Types.Diagnostic
 module DidSaveTextDocumentParams = Lsp.Types.DidSaveTextDocumentParams
 module DocumentUri = Lsp.Types.DocumentUri
@@ -133,6 +134,23 @@ class lsp_server (env : LspCn.cerb_env) =
 
     (***************************************************************)
     (***  Requests  ************************************************)
+
+    method on_request_unhandled
+      (type r)
+      ~notify_back:(_ : Rpc.notify_back)
+      ~id:(_ : Jsonrpc.Id.t)
+      (request : r CReq.t)
+      : r IO.t =
+      let open IO in
+      match request with
+      | SemanticTokensFull params ->
+        let uri = params.textDocument.uri in
+        (match SemanticTokens.comment_tokens uri with
+         | Ok toks -> return (Some toks)
+         | Error err ->
+           Log.e (sprintf "error when generating semantic tokens: %s" err);
+           return None)
+      | _ -> failwith "unrecognized request"
 
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
