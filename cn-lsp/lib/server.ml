@@ -1,5 +1,4 @@
 open! Base
-
 module Json = Yojson.Safe
 
 (* Linol *)
@@ -18,6 +17,7 @@ module PublishDiagnosticsParams = Lsp.Types.PublishDiagnosticsParams
 module Registration = Lsp.Types.Registration
 module RegistrationParams = Lsp.Types.RegistrationParams
 module ShowMessageParams = Lsp.Types.ShowMessageParams
+module SemanticTokensRegistrationOptions = Lsp.Types.SemanticTokensRegistrationOptions
 module SReq = Lsp.Server_request
 module TextDocumentContentChangeEvent = Lsp.Types.TextDocumentContentChangeEvent
 module TextDocumentIdentifier = Lsp.Types.TextDocumentIdentifier
@@ -110,6 +110,7 @@ class lsp_server (env : LspCn.cerb_env) =
       let open IO in
       let* () = self#fetch_configuration notify_back in
       let* () = self#register_did_change_configuration notify_back in
+      let* () = self#register_semantic_token_provider notify_back in
       return ()
 
     method on_notification_unhandled
@@ -233,6 +234,15 @@ class lsp_server (env : LspCn.cerb_env) =
       let registerOptions =
         ConfigurationItem.(yojson_of_t (create ~section:Config.section ()))
       in
+      self#register_capability ~notify_back ~method_ ~registerOptions ()
+
+    (** Ask the client to send [textDocument/semanticTokens/full] requests *)
+    method register_semantic_token_provider (notify_back : Rpc.notify_back) : unit IO.t =
+      let method_ = "textDocument/semanticTokens" in
+      let legend = SemanticTokens.legend in
+      let full = `Bool true in
+      let options = SemanticTokensRegistrationOptions.create ~legend ~full () in
+      let registerOptions = SemanticTokensRegistrationOptions.yojson_of_t options in
       self#register_capability ~notify_back ~method_ ~registerOptions ()
 
     method run_cn (notify_back : Rpc.notify_back) (uri : DocumentUri.t) : unit IO.t =
