@@ -1,6 +1,8 @@
 (library
  (name cnlsp)
- (libraries base cn linol linol-lwt lsp))
+ (libraries base cn linol linol-lwt lsp)
+ (preprocess
+  (pps ppx_deriving.enum ppx_enumerate)))
 
 (env
  (dev
