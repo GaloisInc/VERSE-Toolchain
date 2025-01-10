@@ -64,6 +64,12 @@
             "editor.tokenColorCustomizations": {
                 "textMateRules": [
                     {
+                        "scope": "comment.block.c",
+                        "settings": {
+                            "fontStyle": ""
+                        }
+                    },
+                    {
                         "scope": "source.cn",
                         "settings": {
                             "fontStyle": "italic"
@@ -92,7 +98,24 @@
             "files.associations": {
                 "*.h": "c"
             }
-        }
+        },
+        "semanticTokenTypes": [
+            {
+                "id": "nonMagicComment",
+                "superType": "comment",
+                "description": "A magic comment using a syntax other than the one selected"
+            }
+        ],
+        "semanticTokenScopes": [
+            {
+                "language": "c",
+                "scopes": {
+                    "nonMagicComment": [
+                        "comment.block.c"
+                    ]
+                }
+            }
+        ]
     },
     "scripts": {
         "compile": "tsc --build",
