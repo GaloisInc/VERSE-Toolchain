@@ -4,13 +4,12 @@ module SemanticTokenModifiers = Lsp.Types.SemanticTokenModifiers
 module SemanticTokenTypes = Lsp.Types.SemanticTokenTypes
 
 module SupportedTokens = struct
-  (** A subset of the types enumerated in the LSP documentation, at
-      https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_semanticTokens) *)
-  type ty = Comment [@@deriving enum, enumerate]
+  type ty = NonMagicComment [@@deriving enum, enumerate]
 
-  let ty_to_string (tok_ty : ty) : string =
+  (** Map the token type to the identifier that a client will understand *)
+  let ty_to_identifier (tok_ty : ty) : string =
     match tok_ty with
-    | Comment -> "comment"
+    | NonMagicComment -> "nonMagicComment"
   ;;
 
   (* We don't currently support token modifiers, but if we want to, they should
@@ -19,7 +18,9 @@ end
 
 (** The token types and modifiers the server supports *)
 let legend : SemanticTokensLegend.t =
-  let tokenTypes = List.map SupportedTokens.all_of_ty ~f:SupportedTokens.ty_to_string in
+  let tokenTypes =
+    List.map SupportedTokens.all_of_ty ~f:SupportedTokens.ty_to_identifier
+  in
   let tokenModifiers = [] in
   SemanticTokensLegend.create ~tokenTypes ~tokenModifiers
 ;;
@@ -91,7 +92,7 @@ let comment_tokens (uri : Uri.t) : (Lsp.Types.SemanticTokens.t, string) Result.t
   let@ cn_comment_ranges = Parse.document_file_comments uri in
   List.iter cn_comment_ranges ~f:(fun r -> Log.d (Range.to_string r));
   let semantic_tokens = to_semantic_tokens (to_lines cn_comment_ranges) ~prev:origin in
-  let comment_index = SupportedTokens.ty_to_enum Comment in
+  let comment_index = SupportedTokens.ty_to_enum NonMagicComment in
   let modifiers = 0b0 in
   (* This 5-based encoding is defined at
      https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_semanticTokens
