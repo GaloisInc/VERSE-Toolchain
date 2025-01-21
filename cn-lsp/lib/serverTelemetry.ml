@@ -19,10 +19,6 @@ module EventData = struct
 
   type event_result =
     | Success
-    | PartialSuccess of
-        { successes : int
-        ; failures : int
-        }
     | Failure
   [@@deriving eq, show, yojson]
 
