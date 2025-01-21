@@ -5,6 +5,7 @@ module EventData = struct
 
   type event_type =
     | ServerStart
+    | ServerStop
     | OpenFile of string
     | CloseFile of string
   [@@deriving eq, show, yojson]

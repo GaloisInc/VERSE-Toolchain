@@ -180,6 +180,14 @@ class lsp_server (env : LspCn.cerb_env) =
         return `Null
       | _ -> failwith ("Unknown method: " ^ method_name)
 
+    method on_req_shutdown
+      ~notify_back:(_ : Rpc.notify_back)
+      ~id:(_ : Jsonrpc.Id.t)
+      : unit IO.t =
+      let event_data = EventData.{ event_type = ServerStop; event_result = None } in
+      self#record_telemetry event_data;
+      IO.return ()
+
     (***************************************************************)
     (***  Other  ***************************************************)
 
