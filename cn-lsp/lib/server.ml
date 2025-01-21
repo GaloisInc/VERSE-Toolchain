@@ -260,19 +260,51 @@ class lsp_server (env : LspCn.cerb_env) =
 
     method run_cn (notify_back : Rpc.notify_back) (uri : DocumentUri.t) : unit IO.t =
       let open IO in
+      let begin_event =
+        EventData.
+          { event_type = BeginVerify { file = Uri.to_path uri }; event_result = None }
+      in
+      self#record_telemetry begin_event;
       match LspCn.(run (run_cn env uri)) with
-      | Ok [] -> cinfo notify_back "No issues found"
+      | Ok [] ->
+        let end_event =
+          EventData.
+            { event_type = EndVerify { file = Uri.to_path uri }
+            ; event_result = Some Success
+            }
+        in
+        self#record_telemetry end_event;
+        cinfo notify_back "No issues found"
       | Ok errs ->
+        let end_event =
+          EventData.
+            { event_type = EndVerify { file = Uri.to_path uri }
+            ; event_result = Some Failure
+            }
+        in
+        self#record_telemetry end_event;
         let diagnostics = Hashtbl.to_alist (LspCn.errors_to_diagnostics errs) in
         self#publish_all notify_back diagnostics
       | Error err ->
         (match LspCn.error_to_diagnostic err with
          | None ->
-           let () =
-             Log.e (sprintf "Unable to decode error: %s" (LspCn.error_to_string err))
+           let end_event =
+             EventData.
+               { event_type = EndVerify { file = Uri.to_path uri }
+               ; event_result = None (* could encode something richer here... *)
+               }
            in
+           self#record_telemetry end_event;
+           Log.e (sprintf "Unable to decode error: %s" (LspCn.error_to_string err));
            return ()
          | Some (diag_uri, diag) ->
+           let end_event =
+             EventData.
+               { event_type = EndVerify { file = Uri.to_path uri }
+               ; event_result = Some Failure
+               }
+           in
+           self#record_telemetry end_event;
            self#publish_diagnostics_for notify_back diag_uri [ diag ])
 
     method initialize_telemetry (dir : string) : unit =

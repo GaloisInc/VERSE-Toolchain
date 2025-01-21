@@ -6,6 +6,8 @@ module EventData = struct
   type event_type =
     | ServerStart
     | ServerStop
+    | BeginVerify of { file : string }
+    | EndVerify of { file : string }
     | OpenFile of string
     | CloseFile of string
   [@@deriving eq, show, yojson]
