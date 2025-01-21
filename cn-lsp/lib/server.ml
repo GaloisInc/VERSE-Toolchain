@@ -81,7 +81,9 @@ class lsp_server (env : LspCn.cerb_env) =
       : unit IO.t =
       let uri = DocumentUri.to_string doc.uri in
       Log.d (sprintf "Opened document %s" uri);
-      let event_data = EventData.{ event_type = OpenFile uri; event_result = None } in
+      let event_data =
+        EventData.{ event_type = OpenFile { file = uri }; event_result = None }
+      in
       self#record_telemetry event_data;
       IO.return ()
 
@@ -102,7 +104,9 @@ class lsp_server (env : LspCn.cerb_env) =
       : unit IO.t =
       let uri = DocumentUri.to_string doc.uri in
       Log.d (sprintf "Closed document %s" uri);
-      let event_data = EventData.{ event_type = CloseFile uri; event_result = None } in
+      let event_data =
+        EventData.{ event_type = CloseFile { file = uri }; event_result = None }
+      in
       self#record_telemetry event_data;
       IO.return ()
 
