@@ -8,12 +8,15 @@ module IO = Rpc.IO
 
 (* LSP Types *)
 module CNotif = Lsp.Client_notification
+module CodeLens = Lsp.Types.CodeLens
+module CodeLensOptions = Lsp.Types.CodeLensOptions
 module ConfigurationItem = Lsp.Types.ConfigurationItem
 module ConfigurationParams = Lsp.Types.ConfigurationParams
 module Diagnostic = Lsp.Types.Diagnostic
 module DidSaveTextDocumentParams = Lsp.Types.DidSaveTextDocumentParams
 module DocumentUri = Lsp.Types.DocumentUri
 module MessageType = Lsp.Types.MessageType
+module ProgressToken = Lsp.Types.ProgressToken
 module PublishDiagnosticsParams = Lsp.Types.PublishDiagnosticsParams
 module Registration = Lsp.Types.Registration
 module RegistrationParams = Lsp.Types.RegistrationParams
@@ -36,19 +39,23 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
 
 module Config = struct
   (** The client controls these options, and sends them at a server's request *)
-  type t = { run_CN_on_save : bool }
+  type t = { 
+    run_CN_on_save : bool;
+    show_Gillian_debug_lenses : bool
+  }
 
   (** The name of the configuration "section" the client uses to identify
       CN-specific settings *)
   let section : string = "CN"
 
-  let default : t = { run_CN_on_save = false }
+  let default : t = { run_CN_on_save = false; show_Gillian_debug_lenses = false }
 
   let t_of_yojson (json : Json.t) : t option =
     let open Json.Util in
     try
       let run_CN_on_save = json |> member "runOnSave" |> to_bool in
-      Some { run_CN_on_save }
+      let show_Gillian_debug_lenses = json |> member "showGillianDebugLenses" |> to_bool in
+      Some { run_CN_on_save; show_Gillian_debug_lenses }
     with
     | _ -> None
   ;;
@@ -133,6 +140,20 @@ class lsp_server (env : LspCn.cerb_env) =
     (***************************************************************)
     (***  Requests  ************************************************)
 
+    method on_req_code_lens
+      ~notify_back:(_ : Rpc.notify_back)
+      ~id:(_ : Jsonrpc.Id.t)
+      ~(uri : DocumentUri.t)
+      ~workDoneToken:(_ : ProgressToken.t option)
+      ~partialResultToken:(_ : ProgressToken.t option)
+      (_ : Rpc.doc_state)
+      : CodeLens.t list IO.t =
+      if server_config.show_Gillian_debug_lenses
+      then 
+        let lenses = (Lenses.gillian_lenses_for uri) in
+        IO.return lenses
+      else IO.return []
+    
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
       ~server_request:(_ : Rpc.server_request_handler_pair -> Jsonrpc.Id.t IO.t)
@@ -157,6 +178,8 @@ class lsp_server (env : LspCn.cerb_env) =
     (***************************************************************)
     (***  Other  ***************************************************)
 
+    method config_code_lens_options = Some (CodeLensOptions.create ())
+    
     (** Set the server's configuration to the provided, JSON-encoded
         configuration *)
     method set_configuration (config_section : Json.t) : unit =
@@ -251,6 +274,14 @@ class lsp_server (env : LspCn.cerb_env) =
            return ()
          | Some (diag_uri, diag) ->
            self#publish_diagnostics_for notify_back diag_uri [ diag ])
+      | exception e ->
+        let backtrace = Backtrace.Exn.most_recent_for_exn e in
+        let backtrace_str = 
+          Option.map ~f:Backtrace.to_string backtrace
+          |> Option.value ~default:"<no backtrace>" in
+        Log.d (sprintf "Verification failed with exception: %s, backtrace: %s" (Exn.to_string e) backtrace_str);
+        return ()
+    
 
     method clear_diagnostics_for
       (notify_back : Rpc.notify_back)

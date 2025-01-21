@@ -48,9 +48,25 @@
                     "type": "string",
                     "default": null,
                     "description": "Location of the LSP server"
+                },
+                "CN.debugPath": {
+                    "type": "string",
+                    "default": null,
+                    "description": "Location of the CN-DAP executable"
+                },
+                "CN.showGillianDebugLenses": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Show code lenses that activate Gillian debugging. Note that this functionality relies on the Gillian debugging extension (https://gillianplatform.github.io/sphinx/debugger.html) being installed, or run in a development host context."
                 }
             }
         },
+        "debuggers": [
+            {
+                "type": "CN",
+                "label": "CN Debugger"
+            }
+        ],
         "grammars": [
             {
                 "path": "./syntaxes/cn.tmLanguage.json",

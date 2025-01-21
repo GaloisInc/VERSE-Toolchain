@@ -1,0 +1,41 @@
+(lang dune 3.12)
+
+(name cndap)
+
+(generate_opam_files true)
+
+(authors "Sam Cowger" "Kiran Gopinathan")
+
+(maintainers "Sam Cowger" "Kiran Gopinathan")
+
+(package
+ (name cndap)
+ (synopsis "CN Debug Adapter")
+ (description "A debug adapter protocol implementation for CN state dumps")
+ (depends
+  dune
+  (ocaml
+   (and
+    (>= 4.14.1)
+    (< 6.0.0)))
+  ;;
+  (base
+   (and
+    (>= v0.16.3)
+    (< v0.18)))
+  (cerberus
+   (= "b9daa22"))
+  (cerberus-lib
+   (= "b9daa22"))
+  (cn
+   (= "b9daa22"))
+  (dap
+   (and
+    (>= 1.0.6)
+    (< 2.0.0)))
+  (gillian
+   (= "0c14d64"))
+  (logs
+   (and
+    (>= 0.7.0)
+    (< 1.0.0)))))
