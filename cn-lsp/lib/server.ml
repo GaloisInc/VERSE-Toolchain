@@ -184,14 +184,6 @@ class lsp_server (env : LspCn.cerb_env) =
         return `Null
       | _ -> failwith ("Unknown method: " ^ method_name)
 
-    method on_req_shutdown
-      ~notify_back:(_ : Rpc.notify_back)
-      ~id:(_ : Jsonrpc.Id.t)
-      : unit IO.t =
-      let event_data = EventData.{ event_type = ServerStop; event_result = None } in
-      self#record_telemetry event_data;
-      IO.return ()
-
     (***************************************************************)
     (***  Other  ***************************************************)
 
@@ -384,20 +376,29 @@ let run ~(socket_path : string) : unit =
       let () = Log.e ("Failed to start: " ^ msg) in
       Stdlib.exit 1
   in
-  (* We encapsulate the type this way (with `:>`) because our class defines more
-     methods than `Rpc.server` specifies *)
-  let s = (new lsp_server cn_env :> Rpc.server) in
+  (* We have separate declarations because we want this function to have access
+     to the server's custom methods, but [Rpc.create] expects something
+     encapsulated as an [Rpc.server] in particular - and that encapsulation
+     hides our methods. *)
+  let cn_server = new lsp_server cn_env in
+  let rpc_server = (cn_server :> Rpc.server) in
   let sockaddr = Lwt_unix.ADDR_UNIX socket_path in
   let sock = Lwt_unix.(socket PF_UNIX SOCK_STREAM) 0 in
   let task =
     let* () = Lwt_unix.connect sock sockaddr in
     let ic = Lwt_io.of_fd ~mode:Lwt_io.Input sock in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.Output sock in
-    let server = Rpc.create ~ic ~oc s in
+    let server = Rpc.create ~ic ~oc rpc_server in
     let shutdown () =
-      match s#get_status with
-      | `ReceivedExit -> true
-      | _ -> false
+      match rpc_server#get_status with
+      | `ReceivedExit | `ReceivedShutdown ->
+        (* Note: this is written this way to accomodate linol v0.6 - If
+           upgrading to 0.7+, this logic can and should move to the
+           [on_req_shutdown] method introduced in 0.7 *)
+        let event_data = EventData.{ event_type = ServerStop; event_result = None } in
+        cn_server#record_telemetry event_data;
+        true
+      | `Running -> false
     in
     let* () = Rpc.run ~shutdown server in
     let () = Log.d "Shutting down" in
