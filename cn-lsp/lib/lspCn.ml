@@ -43,7 +43,7 @@ module Cerb = struct
   let error_to_diagnostic ((loc, cause) : error)
     : (LspDocumentUri.t * LspDiagnostic.t) option
     =
-    let message = error_to_string (loc, cause) in
+    let message = `String (error_to_string (loc, cause)) in
     let source = "Cerberus" in
     match loc_to_source_range loc with
     | None -> None
@@ -163,8 +163,8 @@ let error_to_diagnostic (err : error) : (LspDocumentUri.t * LspDiagnostic.t) opt
     let short = Cn.Pp.plain report.short in
     let message =
       match report.descr with
-      | None -> short
-      | Some d -> short ^ "\n" ^ Cn.Pp.plain d
+      | None -> `String short
+      | Some d -> `String (short ^ "\n" ^ Cn.Pp.plain d)
     in
     let source = "CN" in
     (match Cerb.loc_to_source_range e.loc with
