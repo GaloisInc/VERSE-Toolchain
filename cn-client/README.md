@@ -58,3 +58,14 @@ may end up with a number of orphaned CN processes.
 If the server fails to run CN or interpret its output, you can open up the
 "Output" pane (Cmd-Shift-U) and select "CN" from the dropdown menu on the right
 to see what output CN is producing and why the server is having trouble.
+
+
+# Collecting Telemetry
+
+Our CN language server supports optional collection of user telemetry, to
+support improvements to the tool's usability. Collection is disabled by default.
+
+To enable telemetry collection, go to the settings page for this extension and
+provide a location in which you'd like telemetry to be stored. Changes to this
+setting, whether to enable or disable collection or to change the storage
+destination, will only take effect on the server's start/restart.
