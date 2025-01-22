@@ -9,6 +9,8 @@ type t =
   ; frame_map : FrameMap.t
   ; procedure_name : string
   ; source_file : string
+  ; unproven : string option
+  ; requested : string option
   }
 
 let report_from_file (file : string) : (Cn.Report.report, string) Result.t =
@@ -34,6 +36,8 @@ let make (report_dir : string option) (source_file : string) (procedure_name : s
   in
   Log.d (Printf.sprintf "Looking for report file at %s" report_file);
   let* report = report_from_file report_file in
+  let unproven = Option.map ~f:(fun doc -> Cn.Pp.plain doc) report.unproven in
+  let requested = Option.map ~f:(fun doc -> Cn.Pp.plain doc) report.requested in
   let with_locations =
     List.filter report.trace ~f:(fun t -> Option.is_some t.where.loc_cartesian)
   in
@@ -42,7 +46,14 @@ let make (report_dir : string option) (source_file : string) (procedure_name : s
       (FrameMap.of_state_reports with_locations)
       ~error:"unable to create frame map"
   in
-  Result.Ok { current_node = frame_map.root; frame_map; procedure_name; source_file }
+  Result.Ok
+    { current_node = frame_map.root
+    ; frame_map
+    ; procedure_name
+    ; source_file
+    ; unproven
+    ; requested
+    }
 ;;
 
 let go_to_node (dbg : t) (node_id : id) : unit =
@@ -80,6 +91,9 @@ let current_location (dbg : t) : location option =
     ; end_column = end_column + 1
     }
 ;;
+
+let current_requested (dbg : t) : string option = dbg.requested
+let current_unproven (dbg : t) : string option = dbg.unproven
 
 let current_constraints (dbg : t) : string list option =
   let ( let* ) x f = Option.bind x ~f in

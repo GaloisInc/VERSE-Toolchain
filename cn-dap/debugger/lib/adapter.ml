@@ -41,7 +41,9 @@ let handle_launch (rpc : Rpc.t) : Debugger.t Lwt.t =
       | None -> Lwt.fail_with "no procedure name!"
       | Some procedure_name ->
         (* does debugger initialization need to be in Lwt? *)
-        (match Debugger.make launch_args.report_dir launch_args.program procedure_name with
+        (match
+           Debugger.make launch_args.report_dir launch_args.program procedure_name
+         with
          | Error s -> Lwt.fail_with s
          | Ok debugger ->
            Lwt.wakeup_later resolver debugger;
@@ -71,6 +73,8 @@ let handle_jump (rpc : Rpc.t) (dbg : Debugger.t) : unit =
 
 module Scope = struct
   type t =
+    | Unproven
+    | Requested
     | Constraints
     | Resources
     | Terms
@@ -78,6 +82,8 @@ module Scope = struct
 
   let to_string (scope : t) : string =
     match scope with
+    | Unproven -> "Goals: Unproven"
+    | Requested -> "Goals: Requested"
     | Constraints -> "Constraints"
     | Resources -> "Resources"
     | Terms -> "Terms"
@@ -204,6 +210,14 @@ let handle_variables (rpc : Rpc.t) (dbg : Debugger.t) : unit =
         | None ->
           Log.e (Printf.sprintf "Scope %i not recognized!" variable_scope);
           []
+        | Some Unproven ->
+          (match Debugger.current_unproven dbg with
+           | None -> []
+           | Some s -> [ variable_of_string s ])
+        | Some Requested ->
+          (match Debugger.current_requested dbg with
+           | None -> []
+           | Some s -> [ variable_of_string s ])
         | Some Constraints ->
           (match Debugger.current_constraints dbg with
            | None ->
