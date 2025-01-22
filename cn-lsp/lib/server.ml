@@ -41,13 +41,15 @@ module Config = struct
   type t =
     { run_CN_on_save : bool
     ; show_Gillian_debug_lenses : bool
+    ; dump_state_traces : bool
+    ; report_dir: string option
     }
 
   (** The name of the configuration "section" the client uses to identify
       CN-specific settings *)
   let section : string = "CN"
 
-  let default : t = { run_CN_on_save = false; show_Gillian_debug_lenses = false }
+  let default : t = { run_CN_on_save = false; show_Gillian_debug_lenses = false; dump_state_traces = false; report_dir = None }
 
   let t_of_yojson (json : Json.t) : t option =
     let open Json.Util in
@@ -56,7 +58,11 @@ module Config = struct
       let show_Gillian_debug_lenses =
         json |> member "showGillianDebugLenses" |> to_bool
       in
-      Some { run_CN_on_save; show_Gillian_debug_lenses }
+      let dump_state_traces = json |> member "dumpStateTraces" |> to_bool in
+      let report_dir =
+        json |> member "reportDir" |> to_string_option
+      in
+      Some { run_CN_on_save; show_Gillian_debug_lenses; dump_state_traces; report_dir }
     with
     | _ -> None
   ;;
@@ -150,7 +156,7 @@ class lsp_server (env : LspCn.cerb_env) =
       (_ : Rpc.doc_state)
       : CodeLens.t list IO.t =
       if server_config.show_Gillian_debug_lenses
-      then IO.return (Lenses.gillian_lenses_for uri)
+      then IO.return (Lenses.gillian_lenses_for ?report_dir:server_config.report_dir uri)
       else IO.return []
 
     method on_unknown_request
@@ -259,7 +265,9 @@ class lsp_server (env : LspCn.cerb_env) =
 
     method run_cn (notify_back : Rpc.notify_back) (uri : DocumentUri.t) : unit IO.t =
       let open IO in
-      match LspCn.(run (run_cn env uri)) with
+      let { dump_state_traces; report_dir; _ } : Config.t = server_config in
+      Log.d (sprintf "Running CN on %s" (DocumentUri.to_string uri));
+      match LspCn.(run (run_cn ~dump_state_traces ?report_dir env uri)) with
       | Ok [] -> cinfo notify_back "No issues found"
       | Ok errs ->
         let diagnostics = Hashtbl.to_alist (LspCn.errors_to_diagnostics errs) in

@@ -204,7 +204,24 @@ let lift_cn (x : 'a CnM.m) : ('a, error) Result.t =
 
 let setup () : cerb_env m = lift_cerb (Cerb.setup ())
 
-let run_cn (cerb_env : cerb_env) (uri : LspDocumentUri.t) : error list m =
+let dump_state_traces_json report_dir errors =
+  List.iter errors ~f:(fun (fn, (e : CnM.error)) ->
+    let report = Cn.TypeErrors.pp_message e.msg in
+    match report.state with
+    | None -> ()
+    | Some state ->
+      let report_file = Cn.TypeErrors.mk_report_file_name ~fn_name:fn report_dir e.loc in
+      let report_js = Cn.Report.report_to_yojson state in
+      Yojson.Safe.to_file report_file report_js)
+;;
+
+let run_cn
+  ?(dump_state_traces = false)
+  ?(report_dir : string option)
+  (cerb_env : cerb_env)
+  (uri : LspDocumentUri.t)
+  : error list m
+  =
   (* CLI flag? *)
   let inherit_loc : bool = true in
   let path = LspDocumentUri.to_path uri in
@@ -225,5 +242,9 @@ let run_cn (cerb_env : cerb_env) (uri : LspDocumentUri.t) : error list m =
              in
              Cn.Check.check_c_functions_all wellformedness_result)))
   in
-  return (List.map errors ~f:(fun (_fn, e) -> CnError e))
+  if dump_state_traces
+  then (
+    let outDir = Option.value report_dir ~default:(Stdlib.Filename.dirname path) in
+    dump_state_traces_json outDir errors);
+  return (List.map errors ~f:(fun (_fn, (e : CnM.error)) -> CnError e))
 ;;

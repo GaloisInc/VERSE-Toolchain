@@ -39,5 +39,11 @@ val setup : unit -> cerb_env m
 
 (** Run CN on the given document to potentially produce errors. Use [run] to
     interpret the result, and [error_to_string] and [error_to_diagnostic] to
-    process any errors. *)
-val run_cn : cerb_env -> Lsp.Types.DocumentUri.t -> error list m
+    process any errors. The flags [dump_state_traces] and [report_dir]
+    dictate whether this command should dump the state traces to file. *)
+val run_cn
+  :  ?dump_state_traces:bool
+  -> ?report_dir:string
+  -> cerb_env
+  -> Lsp.Types.DocumentUri.t
+  -> error list m

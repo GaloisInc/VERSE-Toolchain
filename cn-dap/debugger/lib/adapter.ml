@@ -41,7 +41,7 @@ let handle_launch (rpc : Rpc.t) : Debugger.t Lwt.t =
       | None -> Lwt.fail_with "no procedure name!"
       | Some procedure_name ->
         (* does debugger initialization need to be in Lwt? *)
-        (match Debugger.make launch_args.program procedure_name with
+        (match Debugger.make launch_args.report_dir launch_args.program procedure_name with
          | Error s -> Lwt.fail_with s
          | Ok debugger ->
            Lwt.wakeup_later resolver debugger;

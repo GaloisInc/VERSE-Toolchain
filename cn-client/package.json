@@ -54,6 +54,16 @@
                     "default": null,
                     "description": "Location of the CN-DAP executable"
                 },
+                "CN.dumpStateTraces": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When running CN verify, dump state traces to file (required for debugging)"
+                },
+                "CN.reportDir": {
+                    "type": "string",
+                    "default": null,
+                    "description": "Directory to store CN reports in (if unspecified, defaults to source directory)."
+                },                
                 "CN.showGillianDebugLenses": {
                     "type": "boolean",
                     "default": false,

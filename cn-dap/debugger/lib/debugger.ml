@@ -16,7 +16,9 @@ let report_from_file (file : string) : (Cn.Report.report, string) Result.t =
   Cn.Report.report_of_yojson js
 ;;
 
-let make (source_file : string) (procedure_name : string) : (t, string) Result.t =
+let make (report_dir : string option) (source_file : string) (procedure_name : string)
+  : (t, string) Result.t
+  =
   let ( let* ) x f = Result.bind x ~f in
   (* TODO: this improperly relies on the fact that
      `Cn.TypeErrors.mk_report_file_name` happens to only care about the filename
@@ -24,7 +26,9 @@ let make (source_file : string) (procedure_name : string) : (t, string) Result.t
   let source_loc =
     Cerb_location.point { Lexing.dummy_pos with pos_fname = source_file }
   in
-  let source_dir = Stdlib.Filename.dirname source_file in
+  let source_dir =
+    Option.value report_dir ~default:(Stdlib.Filename.dirname source_file)
+  in
   let report_file =
     Cn.TypeErrors.mk_report_file_name ~fn_name:procedure_name source_dir source_loc
   in

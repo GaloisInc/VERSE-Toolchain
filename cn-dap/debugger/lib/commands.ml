@@ -45,6 +45,7 @@ module Launch = struct
       { program : string
       ; stop_on_entry : bool [@default false] [@key "stopOnEntry"]
       ; procedure_name : string option [@default None] [@key "procedureName"]
+      ; report_dir : string option [@default None] [@key "reportDir"]
       }
     [@@deriving yojson { strict = false }]
   end
