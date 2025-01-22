@@ -49,6 +49,11 @@
                     "default": null,
                     "description": "Location of the LSP server"
                 },
+                "CN.debugPath": {
+                    "type": "string",
+                    "default": null,
+                    "description": "Location of the CN-DAP executable"
+                },
                 "CN.showGillianDebugLenses": {
                     "type": "boolean",
                     "default": false,

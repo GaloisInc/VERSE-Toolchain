@@ -12,7 +12,7 @@ depends: [
   "cerberus-lib" {= "b9daa22"}
   "cn" {= "b9daa22"}
   "dap" {>= "1.0.6" & < "2.0.0"}
-  "gillian" {= "c6802c5"}
+  "gillian" {= "0c14d64"}
   "logs" {>= "0.7.0" & < "1.0.0"}
   "odoc" {with-doc}
 ]

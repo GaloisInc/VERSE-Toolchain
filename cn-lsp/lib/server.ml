@@ -273,6 +273,14 @@ class lsp_server (env : LspCn.cerb_env) =
            return ()
          | Some (diag_uri, diag) ->
            self#publish_diagnostics_for notify_back diag_uri [ diag ])
+      | exception e ->
+        let backtrace = Backtrace.Exn.most_recent_for_exn e in
+        let backtrace_str = 
+          Option.map ~f:Backtrace.to_string backtrace
+          |> Option.value ~default:"<no backtrace>" in
+        Log.d (sprintf "Verification failed with exception: %s, backtrace: %s" (Exn.to_string e) backtrace_str);
+        return ()
+    
 
     method clear_diagnostics_for
       (notify_back : Rpc.notify_back)

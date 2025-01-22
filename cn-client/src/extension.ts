@@ -31,12 +31,20 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
         // or retrieved in a server configuration, should we try again?
     }
 
+    const workspaceFolders = vsc.workspace.workspaceFolders;
+    let logPath = "CN-lsp-server.log";
+    if (workspaceFolders && workspaceFolders.length > 0) {
+        const workspaceRoot = workspaceFolders[0].uri.fsPath;
+        logPath = path.join(workspaceRoot, "CN-lsp-server.log");
+    }
+
     const serverOptions: ct.Executable = {
         command: serverContext.serverPath,
         transport: ct.TransportKind.pipe,
         options: {
             env,
         },
+        args: ["--log", logPath]
     };
 
     const clientOptions: ct.LanguageClientOptions = {
@@ -81,6 +89,13 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
         client.sendRequest(req, params);
     });
 
+    context.subscriptions.push(
+        vsc.debug.registerDebugAdapterDescriptorFactory(
+            "CN",
+            new CNDebugAdaptorDescriptorFactory(serverContext.debugPath)
+        )
+    );
+
     client.start();
     console.log("started client");
 }
@@ -93,9 +108,45 @@ export function deactivate(): Thenable<void> | undefined {
     }
 }
 
+class CNDebugAdaptorDescriptorFactory
+    implements vsc.DebugAdapterDescriptorFactory {
+    private debugPath: string;
+
+    constructor(debugPath: string | undefined) {
+        this.debugPath = debugPath ?? "cn-debug";
+    }
+
+    createDebugAdapterDescriptor(
+        _session: vsc.DebugSession,
+        executable: vsc.DebugAdapterExecutable | undefined
+    ): vsc.ProviderResult<vsc.DebugAdapterDescriptor> {
+        let langCmd: string = this.debugPath;
+
+        const config = vsc.workspace.getConfiguration("gillianDebugger");
+        console.log("Configuring debugger!...", { config });
+
+        const workspaceFolders = vsc.workspace.workspaceFolders;
+        let logPath = "CN-debug.log";
+        if (workspaceFolders && workspaceFolders.length > 0) {
+            const workspaceRoot = workspaceFolders[0].uri.fsPath;
+            logPath = path.join(workspaceRoot, "CN-debug.log");
+        }
+
+        let args = [
+            "--log",
+            logPath
+        ];
+
+        executable = new vsc.DebugAdapterExecutable(langCmd, args);
+
+        return executable;
+    }
+}
+
 interface ServerContext {
     serverPath: string;
     cerbRuntime?: string;
+    debugPath?: string;
 }
 
 async function newServerContext(
@@ -122,40 +173,58 @@ async function newServerContext(
             }
 
             let serverPath = path.join(opamDir, "bin", "cn-lsp-server");
+            let debugPath = path.join(opamDir, "bin", "cn-debug");
             let cerbRuntime = path.join(opamDir, "lib", "cerberus", "runtime");
 
-            if (fs.existsSync(serverPath) && fs.existsSync(cerbRuntime)) {
+            if (fs.existsSync(serverPath) && fs.existsSync(debugPath) && fs.existsSync(cerbRuntime)) {
                 return {
                     serverPath,
                     cerbRuntime,
+                    debugPath
                 };
             }
         }
     }
 
+    let serverPath: Maybe<string> = undefined;
+    let debugPath: Maybe<string> = undefined;
+
     console.log("Looking in $CN_LSP_SERVER");
     console.log(process.env);
     let envPath = process.env.CN_LSP_SERVER;
     if (envPath !== undefined) {
-        return { serverPath: envPath };
+        serverPath = envPath;
     }
 
-    console.log("Looking on $PATH");
-    const out = child_process.spawnSync("which", ["cn-lsp-server"], {
-        encoding: "utf-8",
-    });
-    if (out.status === 0) {
-        let serverPath = out.stdout.trim();
-        return { serverPath };
+    if (serverPath === undefined) {
+        console.log("Looking on $PATH");
+        const out = child_process.spawnSync("which", ["cn-lsp-server"], {
+            encoding: "utf-8",
+        });
+        if (out.status === 0) {
+            serverPath = out.stdout.trim();
+        }
     }
 
-    return undefined;
+    if (debugPath === undefined) {
+        console.log("Looking on $PATH");
+        const out = child_process.spawnSync("which", ["cn-debug"], {
+            encoding: "utf-8",
+        });
+        if (out.status === 0) {
+            debugPath = out.stdout.trim();
+        }
+    }
+
+
+    return serverPath ? { serverPath, debugPath } : undefined;
 }
 
 function getConfiguredServerContext(): Maybe<ServerContext> {
     let conf = vsc.workspace.getConfiguration("CN");
     let serverPath: Maybe<string> = conf.get("serverPath");
     let cerbRuntime: Maybe<string> = conf.get("cerbRuntime");
+    let debugPath: Maybe<string> = conf.get("debugPath");
 
     // In practice, despite the type annotations, `conf.get` seems capable of
     // returning `null` values, so we need to check them
@@ -165,9 +234,12 @@ function getConfiguredServerContext(): Maybe<ServerContext> {
         serverPath !== "" &&
         cerbRuntime !== null &&
         cerbRuntime !== undefined &&
-        cerbRuntime !== ""
+        cerbRuntime !== "" && 
+        debugPath !== null &&
+        debugPath !== undefined &&
+        debugPath !== ""
     ) {
-        return { serverPath, cerbRuntime };
+        return { serverPath, cerbRuntime, debugPath };
     } else {
         return undefined;
     }
@@ -183,6 +255,11 @@ async function setConfiguredServerContext(serverContext: ServerContext) {
     await conf.update(
         "serverPath",
         serverContext.serverPath,
+        vsc.ConfigurationTarget.Global
+    );
+    await conf.update(
+        "debugPath",
+        serverContext.debugPath,
         vsc.ConfigurationTarget.Global
     );
 }
