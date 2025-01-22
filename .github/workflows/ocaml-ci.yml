@@ -1,4 +1,4 @@
-name: CN Server CI
+name: OCaml CI
 
 on:
   push:
@@ -31,16 +31,16 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
 
-      - name: Link lockfile
-        run: ln -s cn-lsp.opam.locked-${{ matrix.ocaml-version }} cn-lsp.opam.locked
+      - name: Link lockfiles
+        run: |
+          ln -s telemetry.opam.locked-${{ matrix.ocaml-version }} telemetry.opam.locked
+          ln -s cn-lsp.opam.locked-${{ matrix.ocaml-version }} cn-lsp.opam.locked
 
-      - name: Install server dependencies
-        run: opam install ./cn-lsp.opam --deps-only --locked -y
+      - name: Install dependencies
+        run: opam install . --deps-only --locked -y
 
-      - name: Build server
-        working-directory: ./cn-lsp
+      - name: Build
         run: eval $(opam env) && dune build
 
-      - name: Run server tests
-        working-directory: ./cn-lsp
+      - name: Run tests
         run: eval $(opam env) && dune test
