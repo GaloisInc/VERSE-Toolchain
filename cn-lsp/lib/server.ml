@@ -1,5 +1,4 @@
 open! Base
-
 module Json = Yojson.Safe
 
 (* Linol *)
@@ -24,6 +23,12 @@ module TextDocumentIdentifier = Lsp.Types.TextDocumentIdentifier
 module TextDocumentItem = Lsp.Types.TextDocumentItem
 module VersionedTextDocumentIdentifier = Lsp.Types.VersionedTextDocumentIdentifier
 
+(* Telemetry *)
+module EventData = ServerTelemetry.EventData
+module ProfileData = ServerTelemetry.ProfileData
+module Event = Telemetry.Event.M (EventData)
+module Storage = Telemetry.Disk.M (EventData) (ProfileData)
+
 let cwindow (level : MessageType.t) (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   let params = ShowMessageParams.create ~message:msg ~type_:level in
   let msg = Lsp.Server_notification.ShowMessage params in
@@ -36,22 +41,21 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
 
 module Config = struct
   (** The client controls these options, and sends them at a server's request *)
-  type t = { run_CN_on_save : bool }
+  type t =
+    { run_CN_on_save : bool [@key "runOnSave"]
+    ; telemetry_dir : string option [@default None] [@key "telemetryDir"]
+    }
+  [@@deriving yojson { strict = false }]
+  (* `strict = false` to account for extra configuration fields the client
+     defines but which the server doesn't care about (e.g., at the moment,
+     "cerbRuntime"). There's probably a more idiomatic way to handle this - have
+     the client put such fields in a different "section", perhaps? *)
 
   (** The name of the configuration "section" the client uses to identify
       CN-specific settings *)
   let section : string = "CN"
 
-  let default : t = { run_CN_on_save = false }
-
-  let t_of_yojson (json : Json.t) : t option =
-    let open Json.Util in
-    try
-      let run_CN_on_save = json |> member "runOnSave" |> to_bool in
-      Some { run_CN_on_save }
-    with
-    | _ -> None
-  ;;
+  let default : t = { run_CN_on_save = false; telemetry_dir = None }
 end
 
 let sprintf = Printf.sprintf
@@ -60,6 +64,7 @@ class lsp_server (env : LspCn.cerb_env) =
   object (self)
     val env : LspCn.cerb_env = env
     val mutable server_config : Config.t = Config.default
+    val mutable telemetry_storage : Storage.t option = None
     inherit Rpc.server
 
     (* Required *)
@@ -74,8 +79,12 @@ class lsp_server (env : LspCn.cerb_env) =
       (doc : TextDocumentItem.t)
       ~content:(_ : string)
       : unit IO.t =
-      let msg = "Opened document: " ^ DocumentUri.to_string doc.uri in
-      let () = Log.d msg in
+      let uri = DocumentUri.to_string doc.uri in
+      Log.d (sprintf "Opened document %s" uri);
+      let event_data =
+        EventData.{ event_type = OpenFile { file = uri }; event_result = None }
+      in
+      self#record_telemetry event_data;
       IO.return ()
 
     (* Required *)
@@ -93,8 +102,12 @@ class lsp_server (env : LspCn.cerb_env) =
       ~notify_back:(_ : Rpc.notify_back)
       (doc : TextDocumentIdentifier.t)
       : unit IO.t =
-      let msg = "Closed document: " ^ DocumentUri.to_string doc.uri in
-      let () = Log.d msg in
+      let uri = DocumentUri.to_string doc.uri in
+      Log.d (sprintf "Closed document %s" uri);
+      let event_data =
+        EventData.{ event_type = CloseFile { file = uri }; event_result = None }
+      in
+      self#record_telemetry event_data;
       IO.return ()
 
     method on_notif_doc_did_save
@@ -108,7 +121,13 @@ class lsp_server (env : LspCn.cerb_env) =
 
     method on_notif_initialized (notify_back : Rpc.notify_back) : unit IO.t =
       let open IO in
-      let* () = self#fetch_configuration notify_back in
+      let* cfg = self#fetch_configuration notify_back in
+      server_config <- cfg;
+      (match server_config.telemetry_dir with
+       | None -> ()
+       | Some dir -> self#initialize_telemetry dir);
+      let event_data = EventData.{ event_type = ServerStart; event_result = None } in
+      self#record_telemetry event_data;
       let* () = self#register_did_change_configuration notify_back in
       return ()
 
@@ -121,8 +140,19 @@ class lsp_server (env : LspCn.cerb_env) =
       | CNotif.Initialized -> self#on_notif_initialized notify_back
       | CNotif.ChangeConfiguration params ->
         let config_section = params.settings |> Json.Util.member Config.section in
-        let () = self#set_configuration config_section in
-        return ()
+        (match Config.of_yojson config_section with
+         | Error err -> failwith (sprintf "Failed to decode config: %s" err)
+         | Ok cfg ->
+           Log.d (sprintf "Replacing config with: %s" (Json.to_string config_section));
+           let old_telemetry_dir = server_config.telemetry_dir in
+           server_config <- cfg;
+           let new_telemetry_dir = server_config.telemetry_dir in
+           if not (Option.equal String.equal old_telemetry_dir new_telemetry_dir)
+           then
+             cinfo
+               notify_back
+               "Restart server for changes to telemetry configuration to take effect"
+           else return ())
       | _ ->
         let s =
           Json.to_string (Jsonrpc.Notification.yojson_of_t (CNotif.to_jsonrpc notif))
@@ -157,47 +187,36 @@ class lsp_server (env : LspCn.cerb_env) =
     (***************************************************************)
     (***  Other  ***************************************************)
 
-    (** Set the server's configuration to the provided, JSON-encoded
-        configuration *)
-    method set_configuration (config_section : Json.t) : unit =
-      match Config.t_of_yojson config_section with
-      | None ->
-        Log.e
-          (sprintf
-             "Unrecognized config section, ignoring: %s"
-             (Json.to_string config_section))
-      | Some cfg ->
-        let () =
-          Log.d (sprintf "Replacing config with: %s" (Json.to_string config_section))
-        in
-        server_config <- cfg
-
-    (** Fetch the client's current configuration and update the server's version
-        of it to match *)
-    method fetch_configuration (notify_back : Rpc.notify_back) : unit IO.t =
+    (** Fetch the client's current configuration *)
+    method fetch_configuration (notify_back : Rpc.notify_back) : Config.t IO.t =
       let open IO in
       let section = ConfigurationItem.create ~section:Config.section () in
       let params = ConfigurationParams.create ~items:[ section ] in
       let req = SReq.WorkspaceConfiguration params in
+      let cfg_promise, cfg_resolver = Lwt.task () in
       let handle (response : (Json.t list, Jsonrpc.Response.Error.t) Result.t) : unit IO.t
         =
-        let () =
+        let cfg_res =
           match response with
-          | Ok [ section ] -> self#set_configuration section
-          | Ok [] -> Log.w "No CN config section found"
+          | Ok [] -> Error "No CN config section found"
+          | Ok [ section ] -> Config.of_yojson section
           | Ok sections ->
             let ss = String.concat ~sep:"," (List.map sections ~f:Json.to_string) in
-            Log.e (sprintf "Too many config sections: [%s]" ss)
+            Error (sprintf "Too many config sections: [%s]" ss)
           | Error e ->
-            Log.e
+            Error
               (sprintf
                  "Client responded with error: %s"
                  (Json.to_string (Jsonrpc.Response.Error.yojson_of_t e)))
         in
-        return ()
+        match cfg_res with
+        | Ok cfg ->
+          Lwt.wakeup_later cfg_resolver cfg;
+          return ()
+        | Error s -> failwith s
       in
       let _id = notify_back#send_request req handle in
-      return ()
+      cfg_promise
 
     (** "Register" for a given client capability *)
     method register_capability
@@ -237,20 +256,75 @@ class lsp_server (env : LspCn.cerb_env) =
 
     method run_cn (notify_back : Rpc.notify_back) (uri : DocumentUri.t) : unit IO.t =
       let open IO in
+      let begin_event =
+        EventData.
+          { event_type = BeginVerify { file = Uri.to_path uri }; event_result = None }
+      in
+      self#record_telemetry begin_event;
       match LspCn.(run (run_cn env uri)) with
-      | Ok [] -> cinfo notify_back "No issues found"
+      | Ok [] ->
+        let end_event =
+          EventData.
+            { event_type = EndVerify { file = Uri.to_path uri }
+            ; event_result = Some Success
+            }
+        in
+        self#record_telemetry end_event;
+        cinfo notify_back "No issues found"
       | Ok errs ->
+        let end_event =
+          EventData.
+            { event_type = EndVerify { file = Uri.to_path uri }
+            ; event_result = Some Failure
+            }
+        in
+        self#record_telemetry end_event;
         let diagnostics = Hashtbl.to_alist (LspCn.errors_to_diagnostics errs) in
         self#publish_all notify_back diagnostics
       | Error err ->
         (match LspCn.error_to_diagnostic err with
          | None ->
-           let () =
-             Log.e (sprintf "Unable to decode error: %s" (LspCn.error_to_string err))
+           let end_event =
+             EventData.
+               { event_type = EndVerify { file = Uri.to_path uri }
+               ; event_result = None (* could encode something richer here... *)
+               }
            in
+           self#record_telemetry end_event;
+           Log.e (sprintf "Unable to decode error: %s" (LspCn.error_to_string err));
            return ()
          | Some (diag_uri, diag) ->
+           let end_event =
+             EventData.
+               { event_type = EndVerify { file = Uri.to_path uri }
+               ; event_result = Some Failure
+               }
+           in
+           self#record_telemetry end_event;
            self#publish_diagnostics_for notify_back diag_uri [ diag ])
+
+    method initialize_telemetry (dir : string) : unit =
+      match Storage.(create { root_dir = dir }) with
+      | Error _e -> Log.e "Unable to create telemetry storage"
+      | Ok storage -> telemetry_storage <- Some storage
+
+    method record_telemetry (event_data : EventData.t) : unit =
+      match server_config.telemetry_dir, telemetry_storage with
+      (* No telemetry directory has been configured *)
+      | None, _ -> ()
+      (* A directory has been configured, but for some reason we haven't
+         initialized telemetry storage *)
+      | Some dir, None -> self#initialize_telemetry dir
+      (* A directory has been configured and we've initialized storage. Don't
+         check that the directory and initialized storage match, because we only
+         promise to initialize storage based on the directory configured at
+         startup. *)
+      | Some _, Some storage ->
+        let session = Telemetry.Session.today () in
+        let event = Event.create ~session ~event_data in
+        (match Storage.store_event storage ~event with
+         | Ok () -> ()
+         | Error _e -> Log.e "couldn't store event")
 
     method clear_diagnostics_for
       (notify_back : Rpc.notify_back)
@@ -302,20 +376,29 @@ let run ~(socket_path : string) : unit =
       let () = Log.e ("Failed to start: " ^ msg) in
       Stdlib.exit 1
   in
-  (* We encapsulate the type this way (with `:>`) because our class defines more
-     methods than `Rpc.server` specifies *)
-  let s = (new lsp_server cn_env :> Rpc.server) in
+  (* We have separate declarations because we want this function to have access
+     to the server's custom methods, but [Rpc.create] expects something
+     encapsulated as an [Rpc.server] in particular - and that encapsulation
+     hides our methods. *)
+  let cn_server = new lsp_server cn_env in
+  let rpc_server = (cn_server :> Rpc.server) in
   let sockaddr = Lwt_unix.ADDR_UNIX socket_path in
   let sock = Lwt_unix.(socket PF_UNIX SOCK_STREAM) 0 in
   let task =
     let* () = Lwt_unix.connect sock sockaddr in
     let ic = Lwt_io.of_fd ~mode:Lwt_io.Input sock in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.Output sock in
-    let server = Rpc.create ~ic ~oc s in
+    let server = Rpc.create ~ic ~oc rpc_server in
     let shutdown () =
-      match s#get_status with
-      | `ReceivedExit -> true
-      | _ -> false
+      match rpc_server#get_status with
+      | `ReceivedExit | `ReceivedShutdown ->
+        (* Note: this is written this way to accomodate linol v0.6 - If
+           upgrading to 0.7+, this logic can and should move to the
+           [on_req_shutdown] method introduced in 0.7 *)
+        let event_data = EventData.{ event_type = ServerStop; event_result = None } in
+        cn_server#record_telemetry event_data;
+        true
+      | `Running -> false
     in
     let* () = Rpc.run ~shutdown server in
     let () = Log.d "Shutting down" in

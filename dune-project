@@ -49,7 +49,8 @@
   (lsp
    (and
     (>= 1.17.0)
-    (< 2.0.0)))))
+    (< 2.0.0)))
+  telemetry))
 
 (package
  (name telemetry)

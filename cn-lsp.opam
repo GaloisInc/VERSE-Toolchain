@@ -16,6 +16,7 @@ depends: [
   "linol-lwt" {>= "0.6" & < "1.0"}
   "logs" {>= "0.7.0" & < "1.0.0"}
   "lsp" {>= "1.17.0" & < "2.0.0"}
+  "telemetry"
   "odoc" {with-doc}
 ]
 build: [
