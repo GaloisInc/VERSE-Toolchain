@@ -7,12 +7,15 @@ module IO = Rpc.IO
 
 (* LSP Types *)
 module CNotif = Lsp.Client_notification
+module CodeLens = Lsp.Types.CodeLens
+module CodeLensOptions = Lsp.Types.CodeLensOptions
 module ConfigurationItem = Lsp.Types.ConfigurationItem
 module ConfigurationParams = Lsp.Types.ConfigurationParams
 module Diagnostic = Lsp.Types.Diagnostic
 module DidSaveTextDocumentParams = Lsp.Types.DidSaveTextDocumentParams
 module DocumentUri = Lsp.Types.DocumentUri
 module MessageType = Lsp.Types.MessageType
+module ProgressToken = Lsp.Types.ProgressToken
 module PublishDiagnosticsParams = Lsp.Types.PublishDiagnosticsParams
 module Registration = Lsp.Types.Registration
 module RegistrationParams = Lsp.Types.RegistrationParams
@@ -43,6 +46,7 @@ module Config = struct
   (** The client controls these options, and sends them at a server's request *)
   type t =
     { run_CN_on_save : bool [@key "runOnSave"]
+    ; show_gillian_debug_lenses : bool [@key "showGillianDebugLenses"]
     ; telemetry_dir : string option [@default None] [@key "telemetryDir"]
     }
   [@@deriving yojson { strict = false }]
@@ -55,7 +59,9 @@ module Config = struct
       CN-specific settings *)
   let section : string = "CN"
 
-  let default : t = { run_CN_on_save = false; telemetry_dir = None }
+  let default : t =
+    { run_CN_on_save = false; show_gillian_debug_lenses = false; telemetry_dir = None }
+  ;;
 end
 
 let sprintf = Printf.sprintf
@@ -163,6 +169,18 @@ class lsp_server (env : LspCn.cerb_env) =
     (***************************************************************)
     (***  Requests  ************************************************)
 
+    method on_req_code_lens
+      ~notify_back:(_ : Rpc.notify_back)
+      ~id:(_ : Jsonrpc.Id.t)
+      ~(uri : DocumentUri.t)
+      ~workDoneToken:(_ : ProgressToken.t option)
+      ~partialResultToken:(_ : ProgressToken.t option)
+      (_ : Rpc.doc_state)
+      : CodeLens.t list IO.t =
+      if server_config.show_gillian_debug_lenses
+      then IO.return (Lenses.gillian_lenses_for uri)
+      else IO.return []
+
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
       ~server_request:(_ : Rpc.server_request_handler_pair -> Jsonrpc.Id.t IO.t)
@@ -186,6 +204,8 @@ class lsp_server (env : LspCn.cerb_env) =
 
     (***************************************************************)
     (***  Other  ***************************************************)
+
+    method config_code_lens_options = Some (CodeLensOptions.create ())
 
     (** Fetch the client's current configuration *)
     method fetch_configuration (notify_back : Rpc.notify_back) : Config.t IO.t =

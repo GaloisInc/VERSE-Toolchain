@@ -81,6 +81,13 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
         client.sendRequest(req, params);
     });
 
+    context.subscriptions.push(
+        vsc.debug.registerDebugAdapterDescriptorFactory(
+            "CN",
+            new CNDebugAdaptorDescriptorFactory()
+        )
+    );
+
     client.start();
     console.log("started client");
 }
@@ -185,4 +192,27 @@ async function setConfiguredServerContext(serverContext: ServerContext) {
         serverContext.serverPath,
         vsc.ConfigurationTarget.Global
     );
+}
+
+class CNDebugAdaptorDescriptorFactory
+    implements vsc.DebugAdapterDescriptorFactory
+{
+    createDebugAdapterDescriptor(
+        _session: vsc.DebugSession,
+        executable: vsc.DebugAdapterExecutable | undefined
+    ): vsc.ProviderResult<vsc.DebugAdapterDescriptor> {
+        let langCmd: string = "cn-debug";
+
+        const config = vsc.workspace.getConfiguration("gillianDebugger");
+        console.log("Configuring debugger...", { config });
+
+        let args = [
+            "--log",
+            "/Users/sam/projects/verse/verse-toolchain/cn-dap/debugger/log.txt",
+        ];
+
+        executable = new vsc.DebugAdapterExecutable(langCmd, args);
+
+        return executable;
+    }
 }

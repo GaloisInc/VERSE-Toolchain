@@ -9,6 +9,38 @@
 (maintainers "Sam Cowger")
 
 (package
+ (name cn-dap)
+ (synopsis "CN Debug Adapter")
+ (description "A debug adapter protocol implementation for CN state dumps")
+ (depends
+  dune
+  (ocaml
+   (and
+    (>= 4.14.1)
+    (< 6.0.0)))
+  ;;
+  (base
+   (and
+    (>= v0.16.3)
+    (< v0.18)))
+  (cerberus
+   (= "b9daa22"))
+  (cerberus-lib
+   (= "b9daa22"))
+  (cn
+   (= "b9daa22"))
+  (dap
+   (and
+    (>= 1.0.6)
+    (< 2.0.0)))
+  (gillian
+   (= "c6802c5"))
+  (logs
+   (and
+    (>= 0.7.0)
+    (< 1.0.0)))))
+
+(package
  (name cn-lsp)
  (synopsis "CN Language Server")
  (description
