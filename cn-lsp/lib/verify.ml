@@ -8,35 +8,14 @@ type error =
 let error_to_string (err : error) : string =
   match err with
   | CerbError (loc, cause) -> LspCerb.error_to_string (loc, cause)
-  | CnError e ->
-    let report = Cn.TypeErrors.pp_message e.msg in
-    let short = Cn.Pp.plain report.short in
-    let desc = Option.value (Option.map report.descr ~f:Cn.Pp.plain) ~default:"<none>" in
-    "CN Error: loc = "
-    ^ Cn.Locations.to_string e.loc
-    ^ ", short = "
-    ^ short
-    ^ ", desc = "
-    ^ desc
+  | CnError e -> LspCn.error_to_string e
 ;;
 
 (** Convert an error to an LSP diagnostic and the URI to which it applies *)
 let error_to_diagnostic (err : error) : (Uri.t * Diagnostic.t) option =
   match err with
   | CerbError (loc, cause) -> LspCerb.error_to_diagnostic (loc, cause)
-  | CnError e ->
-    let report = Cn.TypeErrors.pp_message e.msg in
-    let short = Cn.Pp.plain report.short in
-    let message =
-      match report.descr with
-      | None -> short
-      | Some d -> short ^ "\n" ^ Cn.Pp.plain d
-    in
-    let source = "CN" in
-    (match LspCerb.loc_to_source_range e.loc with
-     | None -> None
-     | Some (path, range) ->
-       Some (Uri.of_path path, Diagnostic.create ~message ~range ~source ()))
+  | CnError e -> LspCn.error_to_diagnostic e
 ;;
 
 let errors_to_diagnostics (errs : error list) : (Uri.t, Diagnostic.t list) Hashtbl.t =
