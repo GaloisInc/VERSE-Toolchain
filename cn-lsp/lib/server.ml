@@ -44,6 +44,7 @@ module Config = struct
   type t =
     { run_CN_on_save : bool [@key "runOnSave"]
     ; telemetry_dir : string option [@default None] [@key "telemetryDir"]
+    ; user_id : string option [@default None] [@key "userID"]
     }
   [@@deriving yojson { strict = false }]
   (* `strict = false` to account for extra configuration fields the client
@@ -55,7 +56,7 @@ module Config = struct
       CN-specific settings *)
   let section : string = "CN"
 
-  let default : t = { run_CN_on_save = false; telemetry_dir = None }
+  let default : t = { run_CN_on_save = false; telemetry_dir = None; user_id = None }
 end
 
 let sprintf = Printf.sprintf
