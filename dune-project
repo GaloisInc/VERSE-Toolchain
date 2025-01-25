@@ -50,7 +50,8 @@
    (and
     (>= 1.17.0)
     (< 2.0.0)))
-  telemetry))
+  (telemetry
+   (= "dev"))))
 
 (package
  (name telemetry)
