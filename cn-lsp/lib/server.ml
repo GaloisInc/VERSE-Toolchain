@@ -307,7 +307,17 @@ class lsp_server (env : LspCn.cerb_env) =
     method initialize_telemetry (dir : string) : unit =
       match Storage.(create { root_dir = dir }) with
       | Error _e -> Log.e "Unable to create telemetry storage"
-      | Ok storage -> telemetry_storage <- Some storage
+      | Ok storage ->
+        telemetry_storage <- Some storage;
+        (match server_config.user_id with
+         | None -> ()
+         | Some id ->
+           let profile = ProfileData.{ id } in
+           (match Storage.store_profile storage ~profile with
+            | Error _e -> Log.e "Unable to save user ID"
+            | Ok (Some prev) ->
+              Log.d (sprintf "Wrote new ID %s (overwrite existing ID %s)" id prev.id)
+            | Ok None -> Log.d (sprintf "Wrote new ID %s" id)))
 
     method record_telemetry (event_data : EventData.t) : unit =
       match server_config.telemetry_dir, telemetry_storage with
