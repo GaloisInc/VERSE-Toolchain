@@ -33,7 +33,6 @@ type 'a m = ('a, error) Result.t
 
 let ( let* ) (a : 'a m) (f : 'a -> 'b m) : 'b m = Result.bind a ~f
 let return (a : 'a) : 'a m = Ok a
-let run (a : 'a m) : ('a, error) Result.t = a
 
 type cerb_env = LspCerb.env
 
@@ -42,7 +41,7 @@ let lift_cerb (x : 'a LspCerb.m) : 'a m =
 ;;
 
 let lift_cn (x : 'a LspCn.m) : ('a, error) Result.t =
-  Result.map_error (LspCn.run x) ~f:(fun e -> CnError e)
+  Result.map_error x ~f:(fun e -> CnError e)
 ;;
 
 let setup () : cerb_env m = lift_cerb (LspCerb.setup ())

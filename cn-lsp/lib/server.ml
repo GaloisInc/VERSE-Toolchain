@@ -247,7 +247,7 @@ class lsp_server (env : Verify.cerb_env) =
           { event_type = BeginVerify { file = Uri.to_path uri }; event_result = None }
       in
       self#record_telemetry begin_event;
-      match Verify.(run (run_cn env uri)) with
+      match Verify.(run_cn env uri) with
       | Ok [] ->
         let end_event =
           EventData.
@@ -365,7 +365,7 @@ let run ~(socket_path : string) : unit =
   let open IO in
   let () = Log.d "Starting" in
   let cn_env =
-    match Verify.(run (setup ())) with
+    match Verify.(setup ()) with
     | Ok t -> t
     | Error e ->
       let msg = Verify.error_to_string e in
