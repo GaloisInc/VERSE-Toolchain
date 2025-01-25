@@ -41,9 +41,9 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
 
 let sprintf = Printf.sprintf
 
-class lsp_server (env : LspCn.cerb_env) =
+class lsp_server (env : Verify.cerb_env) =
   object (self)
-    val env : LspCn.cerb_env = env
+    val env : Verify.cerb_env = env
     val mutable server_config : ServerConfig.t = ServerConfig.default
     val mutable telemetry_storage : Storage.t option = None
     inherit Rpc.server
@@ -247,7 +247,7 @@ class lsp_server (env : LspCn.cerb_env) =
           { event_type = BeginVerify { file = Uri.to_path uri }; event_result = None }
       in
       self#record_telemetry begin_event;
-      match LspCn.(run (run_cn env uri)) with
+      match Verify.(run (run_cn env uri)) with
       | Ok [] ->
         let end_event =
           EventData.
@@ -265,10 +265,10 @@ class lsp_server (env : LspCn.cerb_env) =
             }
         in
         self#record_telemetry end_event;
-        let diagnostics = Hashtbl.to_alist (LspCn.errors_to_diagnostics errs) in
+        let diagnostics = Hashtbl.to_alist (Verify.errors_to_diagnostics errs) in
         self#publish_all notify_back diagnostics
       | Error err ->
-        (match LspCn.error_to_diagnostic err with
+        (match Verify.error_to_diagnostic err with
          | None ->
            let end_event =
              EventData.
@@ -277,7 +277,7 @@ class lsp_server (env : LspCn.cerb_env) =
                }
            in
            self#record_telemetry end_event;
-           Log.e (sprintf "Unable to decode error: %s" (LspCn.error_to_string err));
+           Log.e (sprintf "Unable to decode error: %s" (Verify.error_to_string err));
            return ()
          | Some (diag_uri, diag) ->
            let end_event =
@@ -365,10 +365,10 @@ let run ~(socket_path : string) : unit =
   let open IO in
   let () = Log.d "Starting" in
   let cn_env =
-    match LspCn.(run (setup ())) with
+    match Verify.(run (setup ())) with
     | Ok t -> t
     | Error e ->
-      let msg = LspCn.error_to_string e in
+      let msg = Verify.error_to_string e in
       let () = Log.e ("Failed to start: " ^ msg) in
       Stdlib.exit 1
   in
