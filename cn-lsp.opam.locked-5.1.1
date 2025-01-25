@@ -1,11 +1,13 @@
 opam-version: "2.0"
-name: "cnlsp"
+name: "cn-lsp"
 version: "dev"
 synopsis: "CN Language Server"
 description: "A language server protocol implementation for the CN language"
 maintainer: "Sam Cowger"
 authors: "Sam Cowger"
 depends: [
+  "alcotest" {= "1.8.0"}
+  "astring" {= "0.8.5"}
   "base" {= "v0.17.1"}
   "base-bigarray" {= "base"}
   "base-bytes" {= "base"}
@@ -19,18 +21,19 @@ depends: [
   "cn" {= "b9daa22"}
   "conf-findutils" {= "1"}
   "conf-gmp" {= "4"}
-  "conf-pkg-config" {= "3"}
-  "cppo" {= "1.7.0"}
+  "conf-pkg-config" {= "4"}
+  "cppo" {= "1.8.0"}
   "csexp" {= "1.5.2"}
-  "dune" {= "3.16.1"}
-  "dune-configurator" {= "3.16.1"}
+  "dune" {= "3.17.1"}
+  "dune-configurator" {= "3.17.1"}
+  "fmt" {= "0.9.0"}
   "jsonrpc" {= "1.17.0"}
   "lem" {= "2022-12-10"}
   "linol" {= "0.6"}
   "linol-lwt" {= "0.6"}
   "logs" {= "0.7.0"}
   "lsp" {= "1.17.0"}
-  "lwt" {= "5.8.0"}
+  "lwt" {= "5.9.0"}
   "menhir" {= "20240715"}
   "menhirCST" {= "20240715"}
   "menhirLib" {= "20240715"}
@@ -42,6 +45,7 @@ depends: [
   "ocaml-compiler-libs" {= "v0.12.4"}
   "ocaml-config" {= "3"}
   "ocaml-options-vanilla" {= "1"}
+  "ocaml-syntax-shims" {= "1.0.0"}
   "ocaml_intrinsics_kernel" {= "v0.17.1"}
   "ocamlbuild" {= "0.15.0"}
   "ocamlfind" {= "1.9.6"}
@@ -49,21 +53,25 @@ depends: [
   "ocplib-endian" {= "1.2"}
   "parsexp" {= "v0.17.0"}
   "pprint" {= "20230830"}
+  "ppx_compare" {= "v0.17.0"}
   "ppx_derivers" {= "1.2.1"}
   "ppx_deriving" {= "6.0.3"}
-  "ppx_deriving_yojson" {= "3.9.0"}
+  "ppx_deriving_yojson" {= "3.9.1"}
+  "ppx_hash" {= "v0.17.0"}
   "ppx_sexp_conv" {= "v0.17.0"}
   "ppx_yojson_conv_lib" {= "v0.17.0"}
-  "ppxlib" {= "0.33.0"}
+  "ppxlib" {= "0.34.0"}
   "ppxlib_jane" {= "v0.17.0"}
+  "re" {= "1.12.0"}
   "result" {= "1.5"}
   "seq" {= "base"}
   "sexplib" {= "v0.17.0"}
   "sexplib0" {= "v0.17.0"}
   "sha" {= "1.15.4"}
   "stdlib-shims" {= "0.3.0"}
+  "telemetry" {= "dev"}
   "topkg" {= "1.0.7"}
-  "trace" {= "0.8"}
+  "trace" {= "0.9"}
   "uutf" {= "1.0.3"}
   "yojson" {= "2.2.2"}
   "zarith" {= "1.14"}

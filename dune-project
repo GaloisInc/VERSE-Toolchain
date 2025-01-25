@@ -37,11 +37,11 @@
   (linol
    (and
     (>= 0.6)
-    (< 1.0)))
+    (< 0.7)))
   (linol-lwt
    (and
     (>= 0.6)
-    (< 1.0)))
+    (< 0.7)))
   (logs
    (and
     (>= 0.7.0)
@@ -50,7 +50,8 @@
    (and
     (>= 1.17.0)
     (< 2.0.0)))
-  telemetry))
+  (telemetry
+   (= "dev"))))
 
 (package
  (name telemetry)
