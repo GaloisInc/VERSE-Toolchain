@@ -53,6 +53,11 @@
                     "type": "string",
                     "default": null,
                     "description": "Where to store telemetry. Changes take effect on server start/restart."
+                },
+                "CN.userID": {
+                    "type": "string",
+                    "default": null,
+                    "description": "A user ID to associate with telemetry. Changes take effect on server start/restart."
                 }
             }
         },
