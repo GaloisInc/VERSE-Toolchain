@@ -39,32 +39,12 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   cwindow MessageType.Info notify msg
 ;;
 
-module Config = struct
-  (** The client controls these options, and sends them at a server's request *)
-  type t =
-    { run_CN_on_save : bool [@key "runOnSave"]
-    ; telemetry_dir : string option [@default None] [@key "telemetryDir"]
-    ; user_id : string option [@default None] [@key "userID"]
-    }
-  [@@deriving yojson { strict = false }]
-  (* `strict = false` to account for extra configuration fields the client
-     defines but which the server doesn't care about (e.g., at the moment,
-     "cerbRuntime"). There's probably a more idiomatic way to handle this - have
-     the client put such fields in a different "section", perhaps? *)
-
-  (** The name of the configuration "section" the client uses to identify
-      CN-specific settings *)
-  let section : string = "CN"
-
-  let default : t = { run_CN_on_save = false; telemetry_dir = None; user_id = None }
-end
-
 let sprintf = Printf.sprintf
 
 class lsp_server (env : LspCn.cerb_env) =
   object (self)
     val env : LspCn.cerb_env = env
-    val mutable server_config : Config.t = Config.default
+    val mutable server_config : ServerConfig.t = ServerConfig.default
     val mutable telemetry_storage : Storage.t option = None
     inherit Rpc.server
 
@@ -140,8 +120,8 @@ class lsp_server (env : LspCn.cerb_env) =
       match notif with
       | CNotif.Initialized -> self#on_notif_initialized notify_back
       | CNotif.ChangeConfiguration params ->
-        let config_section = params.settings |> Json.Util.member Config.section in
-        (match Config.of_yojson config_section with
+        let config_section = params.settings |> Json.Util.member ServerConfig.section in
+        (match ServerConfig.of_yojson config_section with
          | Error err -> failwith (sprintf "Failed to decode config: %s" err)
          | Ok cfg ->
            Log.d (sprintf "Replacing config with: %s" (Json.to_string config_section));
@@ -189,9 +169,9 @@ class lsp_server (env : LspCn.cerb_env) =
     (***  Other  ***************************************************)
 
     (** Fetch the client's current configuration *)
-    method fetch_configuration (notify_back : Rpc.notify_back) : Config.t IO.t =
+    method fetch_configuration (notify_back : Rpc.notify_back) : ServerConfig.t IO.t =
       let open IO in
-      let section = ConfigurationItem.create ~section:Config.section () in
+      let section = ConfigurationItem.create ~section:ServerConfig.section () in
       let params = ConfigurationParams.create ~items:[ section ] in
       let req = SReq.WorkspaceConfiguration params in
       let cfg_promise, cfg_resolver = Lwt.task () in
@@ -200,7 +180,7 @@ class lsp_server (env : LspCn.cerb_env) =
         let cfg_res =
           match response with
           | Ok [] -> Error "No CN config section found"
-          | Ok [ section ] -> Config.of_yojson section
+          | Ok [ section ] -> ServerConfig.of_yojson section
           | Ok sections ->
             let ss = String.concat ~sep:"," (List.map sections ~f:Json.to_string) in
             Error (sprintf "Too many config sections: [%s]" ss)
@@ -251,7 +231,7 @@ class lsp_server (env : LspCn.cerb_env) =
     method register_did_change_configuration (notify_back : Rpc.notify_back) : unit IO.t =
       let method_ = "workspace/didChangeConfiguration" in
       let registerOptions =
-        ConfigurationItem.(yojson_of_t (create ~section:Config.section ()))
+        ConfigurationItem.(yojson_of_t (create ~section:ServerConfig.section ()))
       in
       self#register_capability ~notify_back ~method_ ~registerOptions ()
 
