@@ -6,7 +6,7 @@ type t =
   ; telemetry_dir : string option [@default None] [@key "telemetryDir"]
   ; user_id : string option [@default None] [@key "userID"]
   }
-[@@deriving yojson { strict = false }]
+[@@deriving eq, show, yojson { strict = false }]
 
 (* `strict = false` to account for extra configuration fields the client
    defines but which the server doesn't care about (e.g., at the moment,

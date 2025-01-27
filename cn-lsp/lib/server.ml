@@ -128,6 +128,11 @@ class lsp_server (env : LspCn.cerb_env) =
            let old_telemetry_dir = server_config.telemetry_dir in
            server_config <- cfg;
            let new_telemetry_dir = server_config.telemetry_dir in
+           let change_event =
+             EventData.
+               { event_type = ChangeConfiguration { cfg }; event_result = Some Success }
+           in
+           self#record_telemetry change_event;
            if not (Option.equal String.equal old_telemetry_dir new_telemetry_dir)
            then
              cinfo
