@@ -8,18 +8,6 @@ module CG = Cerb_global
 (* LSP *)
 module Diagnostic = Lsp.Types.Diagnostic
 
-type error = CF.Errors.error
-type 'a m = ('a, error) CF.Exception.exceptM
-
-let ( let* ) (a : 'a m) (f : 'a -> 'b m) : 'b m = CF.Exception.except_bind a f
-let return (a : 'a) : 'a m = CF.Exception.except_return a
-
-let run (x : 'a m) : ('a, error) Result.t =
-  match x with
-  | CF.Exception.Exception (loc, cause) -> Error (loc, cause)
-  | CF.Exception.Result r -> Ok r
-;;
-
 let loc_to_source_range (loc : Cerb_location.t) : (string * Range.t) option =
   let path_opt =
     match Cn.Locations.start_pos loc, Cn.Locations.end_pos loc with
@@ -32,15 +20,30 @@ let loc_to_source_range (loc : Cerb_location.t) : (string * Range.t) option =
   | _ -> None
 ;;
 
-let error_to_string ((loc, cause) : error) : string = CF.Pp_errors.to_string (loc, cause)
+module Error = struct
+  type t = CF.Errors.error
 
-let error_to_diagnostic ((loc, cause) : error) : (Uri.t * Diagnostic.t) option =
-  let message = error_to_string (loc, cause) in
-  let source = "Cerberus" in
-  match loc_to_source_range loc with
-  | None -> None
-  | Some (path, range) ->
-    Some (Uri.of_path path, Diagnostic.create ~message ~range ~source ())
+  let to_string ((loc, cause) : t) : string = CF.Pp_errors.to_string (loc, cause)
+
+  let to_diagnostic ((loc, cause) : t) : (Uri.t * Diagnostic.t) option =
+    let message = to_string (loc, cause) in
+    let source = "Cerberus" in
+    match loc_to_source_range loc with
+    | None -> None
+    | Some (path, range) ->
+      Some (Uri.of_path path, Diagnostic.create ~message ~range ~source ())
+  ;;
+end
+
+type 'a m = ('a, Error.t) CF.Exception.exceptM
+
+let ( let* ) (a : 'a m) (f : 'a -> 'b m) : 'b m = CF.Exception.except_bind a f
+let return (a : 'a) : 'a m = CF.Exception.except_return a
+
+let run (x : 'a m) : ('a, Error.t) Result.t =
+  match x with
+  | CF.Exception.Exception (loc, cause) -> Error (loc, cause)
+  | CF.Exception.Result r -> Ok r
 ;;
 
 type conf = CB.Pipeline.configuration

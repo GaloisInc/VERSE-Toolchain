@@ -265,10 +265,10 @@ class lsp_server (env : Verify.cerb_env) =
             }
         in
         self#record_telemetry end_event;
-        let diagnostics = Hashtbl.to_alist (Verify.errors_to_diagnostics errs) in
+        let diagnostics = Hashtbl.to_alist (Verify.Error.to_diagnostics errs) in
         self#publish_all notify_back diagnostics
       | Error err ->
-        (match Verify.error_to_diagnostic err with
+        (match Verify.Error.to_diagnostic err with
          | None ->
            let end_event =
              EventData.
@@ -277,7 +277,7 @@ class lsp_server (env : Verify.cerb_env) =
                }
            in
            self#record_telemetry end_event;
-           Log.e (sprintf "Unable to decode error: %s" (Verify.error_to_string err));
+           Log.e (sprintf "Unable to decode error: %s" (Verify.Error.to_string err));
            return ()
          | Some (diag_uri, diag) ->
            let end_event =
@@ -368,7 +368,7 @@ let run ~(socket_path : string) : unit =
     match Verify.(setup ()) with
     | Ok t -> t
     | Error e ->
-      let msg = Verify.error_to_string e in
+      let msg = Verify.Error.to_string e in
       let () = Log.e ("Failed to start: " ^ msg) in
       Stdlib.exit 1
   in
