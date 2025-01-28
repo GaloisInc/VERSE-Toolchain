@@ -247,6 +247,12 @@ class lsp_server (env : Verify.cerb_env) =
           { event_type = BeginVerify { file = Uri.to_path uri }; event_result = None }
       in
       self#record_telemetry begin_event;
+      let failure (causes : string list) : EventData.t =
+        EventData.
+          { event_type = EndVerify { file = Uri.to_path uri }
+          ; event_result = Some (Failure { causes })
+          }
+      in
       match Verify.(run_cn env uri) with
       | Ok [] ->
         let end_event =
@@ -259,36 +265,19 @@ class lsp_server (env : Verify.cerb_env) =
         cinfo notify_back "No issues found"
       | Ok errs ->
         let causes = List.map errs ~f:Verify.Error.to_string in
-        let end_event =
-          EventData.
-            { event_type = EndVerify { file = Uri.to_path uri }
-            ; event_result = Some (Failure { causes })
-            }
-        in
+        let end_event = failure causes in
         self#record_telemetry end_event;
         let diagnostics = Hashtbl.to_alist (Verify.Error.to_diagnostics errs) in
         self#publish_all notify_back diagnostics
       | Error err ->
         let cause = Verify.Error.to_string err in
+        let end_event = failure [ cause ] in
+        self#record_telemetry end_event;
         (match Verify.Error.to_diagnostic err with
          | None ->
-           let end_event =
-             EventData.
-               { event_type = EndVerify { file = Uri.to_path uri }
-               ; event_result = Some (Failure { causes = [ cause ] })
-               }
-           in
-           self#record_telemetry end_event;
            Log.e (sprintf "Unable to decode error: %s" (Verify.Error.to_string err));
            return ()
          | Some (diag_uri, diag) ->
-           let end_event =
-             EventData.
-               { event_type = EndVerify { file = Uri.to_path uri }
-               ; event_result = Some (Failure { causes = [ cause ] })
-               }
-           in
-           self#record_telemetry end_event;
            self#publish_diagnostics_for notify_back diag_uri [ diag ])
 
     method initialize_telemetry (dir : string) : unit =
