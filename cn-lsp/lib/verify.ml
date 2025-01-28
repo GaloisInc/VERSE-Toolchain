@@ -19,6 +19,8 @@ module Error = struct
     | CnError e -> LspCn.Error.to_diagnostic e
   ;;
 
+  (** Convert many CN errors to many LSP diagnostics, indexed by the URIs in
+      which they apply *)
   let to_diagnostics (errs : t list) : (Uri.t, Diagnostic.t list) Hashtbl.t =
     let diags = Hashtbl.create (module Uri) in
     let add err =
@@ -31,23 +33,31 @@ module Error = struct
   ;;
 end
 
+(** The type of the verification "monad" *)
 type 'a m = ('a, Error.t) Result.t
 
 let ( let* ) (a : 'a m) (f : 'a -> 'b m) : 'b m = Result.bind a ~f
 let return (a : 'a) : 'a m = Ok a
 
+(** A reusable "environment" needed to run CN *)
 type cerb_env = LspCerb.env
 
+(** Lift a cerberus action into our monad *)
 let lift_cerb (x : 'a LspCerb.m) : 'a m =
   Result.map_error (LspCerb.run x) ~f:(fun (l, c) -> Error.CerbError (l, c))
 ;;
 
+(** Lift a CN action into our monad *)
 let lift_cn (x : 'a LspCn.m) : ('a, Error.t) Result.t =
   Result.map_error x ~f:(fun e -> Error.CnError e)
 ;;
 
+(** Create the environment needed to run CN *)
 let setup () : cerb_env m = lift_cerb (LspCerb.setup ())
 
+(** Run CN on the given document to potentially produce errors. Use [run] to
+    interpret the result, and [error_to_string] and [error_to_diagnostic] to
+    process any errors. *)
 let run_cn (cerb_env : cerb_env) (uri : Uri.t) : Error.t list m =
   (* CLI flag? *)
   let inherit_loc : bool = true in
