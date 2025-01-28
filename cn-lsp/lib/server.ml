@@ -258,22 +258,24 @@ class lsp_server (env : Verify.cerb_env) =
         self#record_telemetry end_event;
         cinfo notify_back "No issues found"
       | Ok errs ->
+        let causes = List.map errs ~f:Verify.Error.to_string in
         let end_event =
           EventData.
             { event_type = EndVerify { file = Uri.to_path uri }
-            ; event_result = Some Failure
+            ; event_result = Some (Failure { causes })
             }
         in
         self#record_telemetry end_event;
         let diagnostics = Hashtbl.to_alist (Verify.Error.to_diagnostics errs) in
         self#publish_all notify_back diagnostics
       | Error err ->
+        let cause = Verify.Error.to_string err in
         (match Verify.Error.to_diagnostic err with
          | None ->
            let end_event =
              EventData.
                { event_type = EndVerify { file = Uri.to_path uri }
-               ; event_result = None (* could encode something richer here... *)
+               ; event_result = Some (Failure { causes = [ cause ] })
                }
            in
            self#record_telemetry end_event;
@@ -283,7 +285,7 @@ class lsp_server (env : Verify.cerb_env) =
            let end_event =
              EventData.
                { event_type = EndVerify { file = Uri.to_path uri }
-               ; event_result = Some Failure
+               ; event_result = Some (Failure { causes = [ cause ] })
                }
            in
            self#record_telemetry end_event;

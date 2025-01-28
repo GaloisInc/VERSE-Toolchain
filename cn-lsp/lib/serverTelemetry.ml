@@ -20,7 +20,7 @@ module EventData = struct
 
   type event_result =
     | Success
-    | Failure
+    | Failure of { causes : string list }
   [@@deriving eq, show, yojson]
 
   type t =
