@@ -15,6 +15,7 @@ module EventData = struct
     | EndVerify of { file : string }
     | OpenFile of { file : string }
     | CloseFile of { file : string }
+    | ChangeConfiguration of { cfg : ServerConfig.t }
   [@@deriving eq, show, yojson]
 
   type event_result =
