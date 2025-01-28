@@ -7,13 +7,10 @@ module Error = struct
   let to_string (err : t) : string =
     let report = Cn.TypeErrors.pp_message err.msg in
     let short = Cn.Pp.plain report.short in
-    let desc = Option.value (Option.map report.descr ~f:Cn.Pp.plain) ~default:"<none>" in
-    "CN Error: loc = "
-    ^ Cn.Locations.to_string err.loc
-    ^ ", short = "
-    ^ short
-    ^ ", desc = "
-    ^ desc
+    let loc = Cn.Locations.to_string err.loc in
+    match report.descr with
+    | None -> Printf.sprintf "%s: %s" loc short
+    | Some desc -> Printf.sprintf "%s: %s (%s)" loc short (Cn.Pp.plain desc)
   ;;
 
   let to_diagnostic (err : t) : (Uri.t * Diagnostic.t) option =
