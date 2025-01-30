@@ -53,7 +53,11 @@ let lift_cn (x : 'a LspCn.m) : ('a, Error.t) Result.t =
 ;;
 
 (** Create the environment needed to run CN *)
-let setup () : cerb_env m = lift_cerb (LspCerb.setup ())
+let setup () : cerb_env m =
+  let* env = lift_cerb (LspCerb.setup ()) in
+  Cn.Check.fail_fast := false;
+  return env
+;;
 
 (** Run CN on the given document to potentially produce errors. Use [run] to
     interpret the result, and [error_to_string] and [error_to_diagnostic] to
@@ -74,10 +78,11 @@ let run_cn (cerb_env : cerb_env) (uri : Uri.t) : Error.t list m =
         Cn.Typing.(
           run
             Cn.Context.empty
-            (let@ wellformedness_result, _ =
+            (let@ wellformedness_result, global_var_constraints, _lemmata =
                Cn.Check.check_decls_lemmata_fun_specs prog'
              in
-             Cn.Check.check_c_functions_all wellformedness_result)))
+             Cn.Check.time_check_c_functions
+               (global_var_constraints, wellformedness_result))))
   in
   return (List.map errors ~f:(fun (_fn, e) -> Error.CnError e))
 ;;
