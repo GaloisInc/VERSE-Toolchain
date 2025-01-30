@@ -77,8 +77,7 @@ let setup () : env m =
       exec_mode
       error_verbosity;
     CF.Ocaml_implementation.set CF.Ocaml_implementation.HafniumImpl.impl;
-    CF.Switches.set [ "inner_arg_temps"; "at_magic_comments" ];
-    CF.Core_peval.config_unfold_stdlib := Cn.Sym.has_id_with Cn.Setup.unfold_stdlib_name
+    CF.Switches.set [ "inner_arg_temps"; "at_magic_comments" ]
   in
   let* stdlib = CB.Pipeline.load_core_stdlib () in
   let* impl = CB.Pipeline.load_core_impl stdlib Cn.Setup.impl_name in
@@ -91,7 +90,7 @@ let frontend ((conf, impl, stdlib) : env) (filename : string) =
     { predicates = [ Cn.Alloc.Predicate.(str, sym, Some loc) ]
     ; functions =
         List.map Cn.Builtins.cn_builtin_fun_names ~f:(fun (str, sym) -> str, sym, None)
-    ; idents = [ Cn.Alloc.History.(str, sym, Some loc) ]
+    ; idents = [ Cn.Alloc.History.(str, sym, None) ]
     }
   in
   let* _, ail_prog_opt, prog0 =
