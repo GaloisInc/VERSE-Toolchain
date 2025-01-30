@@ -63,6 +63,9 @@ let setup () : cerb_env m =
     interpret the result, and [error_to_string] and [error_to_diagnostic] to
     process any errors. *)
 let run_cn (cerb_env : cerb_env) (uri : Uri.t) : Error.t list m =
+  (* See https://github.com/GaloisInc/VERSE-Toolchain/issues/142 and
+     https://github.com/rems-project/cerberus/pull/833 *)
+  Cn.Solver.reset_model_evaluator_state ();
   (* CLI flag? *)
   let inherit_loc : bool = true in
   let path = Uri.to_path uri in
