@@ -261,7 +261,7 @@ class lsp_server (env : Verify.cerb_env) =
           ; event_result = Some (Failure { causes })
           }
       in
-      match Verify.(run_cn env uri) with
+      match Verify.(run_cn env uri ~fn:None) with
       | Ok [] ->
         let end_event =
           EventData.
