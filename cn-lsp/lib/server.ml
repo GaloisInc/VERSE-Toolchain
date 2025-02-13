@@ -42,10 +42,14 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
 let sprintf = Printf.sprintf
 
 module VerifyParams = struct
-  (** The schema the server expects for verification command arguments. Clients
-      must respect this schema when issuing this command. *)
+  (** The schema the server expects for verification command ("$/runCN")
+      arguments. Clients must respect this schema when issuing this command. *)
 
-  type t = { uri : Uri.t } [@@deriving yojson]
+  type t =
+    { uri : Uri.t
+    ; fn : string option [@default None]
+    }
+  [@@deriving yojson]
 end
 
 class lsp_server (env : Verify.cerb_env) =
@@ -104,7 +108,7 @@ class lsp_server (env : Verify.cerb_env) =
       : unit IO.t =
       let open IO in
       if server_config.run_CN_on_save
-      then self#run_cn notify_back params.textDocument.uri
+      then self#run_cn notify_back params.textDocument.uri ~fn:None
       else return ()
 
     method on_notif_initialized (notify_back : Rpc.notify_back) : unit IO.t =
@@ -174,7 +178,7 @@ class lsp_server (env : Verify.cerb_env) =
          | Ok ps ->
            (* The URI isn't set automatically on unknown/custom requests *)
            let () = notify_back#set_uri ps.uri in
-           let* () = self#run_cn notify_back ps.uri in
+           let* () = self#run_cn notify_back ps.uri ~fn:ps.fn in
            return `Null)
       | _ -> failwith ("Unknown method: " ^ method_name)
 
@@ -248,7 +252,11 @@ class lsp_server (env : Verify.cerb_env) =
       in
       self#register_capability ~notify_back ~method_ ~registerOptions ()
 
-    method run_cn (notify_back : Rpc.notify_back) (uri : DocumentUri.t) : unit IO.t =
+    method run_cn
+      (notify_back : Rpc.notify_back)
+      (uri : DocumentUri.t)
+      ~(fn : string option)
+      : unit IO.t =
       let open IO in
       let begin_event =
         EventData.
@@ -261,7 +269,7 @@ class lsp_server (env : Verify.cerb_env) =
           ; event_result = Some (Failure { causes })
           }
       in
-      match Verify.(run_cn env uri ~fn:None) with
+      match Verify.(run_cn env uri ~fn) with
       | Ok [] ->
         let end_event =
           EventData.

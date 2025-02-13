@@ -87,6 +87,7 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
 // `Server.VerifyParams.t` type.
 type VerifyParams = {
     uri: ct.DocumentUri;
+    fn?: string;
 };
 
 export function deactivate(): Thenable<void> | undefined {
