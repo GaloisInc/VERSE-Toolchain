@@ -71,19 +71,23 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
             vsc.window.showErrorMessage("CN client: no file currently open");
             return;
         }
-        const doc = activeEditor.document;
 
-        const params: ct.DidSaveTextDocumentParams = {
-            textDocument: {
-                uri: doc.uri.toString(),
-            },
+        const params: VerifyParams = {
+            uri: activeEditor.document.uri.toString(),
         };
+
         client.sendRequest(req, params);
     });
 
     client.start();
     console.log("started client");
 }
+
+// This schema is meant to match the one defined by `cn-lsp`'s
+// `Server.VerifyParams.t` type.
+type VerifyParams = {
+    uri: ct.DocumentUri;
+};
 
 export function deactivate(): Thenable<void> | undefined {
     if (!client) {

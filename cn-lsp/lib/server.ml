@@ -41,6 +41,13 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
 
 let sprintf = Printf.sprintf
 
+module VerifyParams = struct
+  (** The schema the server expects for verification command arguments. Clients
+      must respect this schema when issuing this command. *)
+
+  type t = { uri : Uri.t } [@@deriving yojson]
+end
+
 class lsp_server (env : Verify.cerb_env) =
   object (self)
     val env : Verify.cerb_env = env
@@ -159,15 +166,16 @@ class lsp_server (env : Verify.cerb_env) =
       let open IO in
       match method_name with
       | "$/runCN" ->
-        let obj = Jsonrpc.Structured.yojson_of_t (Option.value_exn params) in
-        let uri =
-          Json.Util.(
-            obj |> member "textDocument" |> member "uri" |> DocumentUri.t_of_yojson)
-        in
-        (* The URI isn't set automatically on unknown/custom requests *)
-        let () = notify_back#set_uri uri in
-        let* () = self#run_cn notify_back uri in
-        return `Null
+        (match
+           VerifyParams.of_yojson
+             (Jsonrpc.Structured.yojson_of_t (Option.value_exn params))
+         with
+         | Error s -> failwith ("Failed to decode '$/runCN' parameters: " ^ s)
+         | Ok ps ->
+           (* The URI isn't set automatically on unknown/custom requests *)
+           let () = notify_back#set_uri ps.uri in
+           let* () = self#run_cn notify_back ps.uri in
+           return `Null)
       | _ -> failwith ("Unknown method: " ^ method_name)
 
     (***************************************************************)
