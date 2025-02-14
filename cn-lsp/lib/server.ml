@@ -51,6 +51,7 @@ module VerifyParams = struct
   type t =
     { uri : Uri.t
     ; fn : string option [@default None]
+    ; fn_range : Range.t option [@key "fnRange"] [@default None]
     }
   [@@deriving yojson]
 end
@@ -76,7 +77,7 @@ class lsp_server (env : Verify.cerb_env) =
       : unit IO.t =
       let uri = DocumentUri.to_string doc.uri in
       Log.d (sprintf "Opened document %s" uri);
-      let event_data =
+      let event_data () =
         EventData.{ event_type = OpenFile { file = uri }; event_result = None }
       in
       self#record_telemetry event_data;
@@ -99,7 +100,7 @@ class lsp_server (env : Verify.cerb_env) =
       : unit IO.t =
       let uri = DocumentUri.to_string doc.uri in
       Log.d (sprintf "Closed document %s" uri);
-      let event_data =
+      let event_data () =
         EventData.{ event_type = CloseFile { file = uri }; event_result = None }
       in
       self#record_telemetry event_data;
@@ -111,7 +112,7 @@ class lsp_server (env : Verify.cerb_env) =
       : unit IO.t =
       let open IO in
       if server_config.run_CN_on_save
-      then self#run_cn notify_back params.textDocument.uri ~fn:None
+      then self#run_cn notify_back params.textDocument.uri ~fn:None ~fn_range:None
       else return ()
 
     method on_notif_initialized (notify_back : Rpc.notify_back) : unit IO.t =
@@ -121,7 +122,7 @@ class lsp_server (env : Verify.cerb_env) =
       (match server_config.telemetry_dir with
        | None -> ()
        | Some dir -> self#initialize_telemetry dir);
-      let event_data = EventData.{ event_type = ServerStart; event_result = None } in
+      let event_data () = EventData.{ event_type = ServerStart; event_result = None } in
       self#record_telemetry event_data;
       let* () = self#register_did_change_configuration notify_back in
       return ()
@@ -142,7 +143,7 @@ class lsp_server (env : Verify.cerb_env) =
            let old_telemetry_dir = server_config.telemetry_dir in
            server_config <- cfg;
            let new_telemetry_dir = server_config.telemetry_dir in
-           let change_event =
+           let change_event () =
              EventData.
                { event_type = ChangeConfiguration { cfg }; event_result = Some Success }
            in
@@ -191,7 +192,7 @@ class lsp_server (env : Verify.cerb_env) =
          | Ok ps ->
            (* The URI isn't set automatically on unknown/custom requests *)
            let () = notify_back#set_uri ps.uri in
-           let* () = self#run_cn notify_back ps.uri ~fn:ps.fn in
+           let* () = self#run_cn notify_back ps.uri ~fn:ps.fn ~fn_range:ps.fn_range in
            return `Null)
       | _ -> failwith ("Unknown method: " ^ method_name)
 
@@ -271,39 +272,37 @@ class lsp_server (env : Verify.cerb_env) =
       (notify_back : Rpc.notify_back)
       (uri : DocumentUri.t)
       ~(fn : string option)
+      ~(fn_range : Range.t option)
       : unit IO.t =
       let open IO in
-      let begin_event =
+      let begin_event () =
+        let fn_body =
+          Option.map fn_range ~f:(fun range -> Parse.extract_from_file range uri)
+        in
         EventData.
-          { event_type = BeginVerify { file = Uri.to_path uri }; event_result = None }
-      in
-      self#record_telemetry begin_event;
-      let failure (causes : string list) : EventData.t =
-        EventData.
-          { event_type = EndVerify { file = Uri.to_path uri }
-          ; event_result = Some (Failure { causes })
+          { event_type = BeginVerify { file = Uri.to_path uri; fn_name = fn; fn_body }
+          ; event_result = None
           }
       in
+      let end_event result () =
+        EventData.
+          { event_type = EndVerify { file = Uri.to_path uri; fn_name = fn }
+          ; event_result = Some result
+          }
+      in
+      self#record_telemetry begin_event;
       match Verify.(run_cn env uri ~fn) with
       | Ok [] ->
-        let end_event =
-          EventData.
-            { event_type = EndVerify { file = Uri.to_path uri }
-            ; event_result = Some Success
-            }
-        in
-        self#record_telemetry end_event;
+        self#record_telemetry (end_event Success);
         cinfo notify_back "No issues found"
       | Ok errs ->
         let causes = List.map errs ~f:Verify.Error.to_string in
-        let end_event = failure causes in
-        self#record_telemetry end_event;
+        self#record_telemetry (end_event (Failure { causes }));
         let diagnostics = Hashtbl.to_alist (Verify.Error.to_diagnostics errs) in
         self#publish_all notify_back diagnostics
       | Error err ->
-        let cause = Verify.Error.to_string err in
-        let end_event = failure [ cause ] in
-        self#record_telemetry end_event;
+        let causes = [ Verify.Error.to_string err ] in
+        self#record_telemetry (end_event (Failure { causes }));
         (match Verify.Error.to_diagnostic err with
          | None ->
            Log.e (sprintf "Unable to decode error: %s" (Verify.Error.to_string err));
@@ -326,7 +325,7 @@ class lsp_server (env : Verify.cerb_env) =
               Log.d (sprintf "Wrote new ID %s (overwrite existing ID %s)" id prev.id)
             | Ok None -> Log.d (sprintf "Wrote new ID %s" id)))
 
-    method record_telemetry (event_data : EventData.t) : unit =
+    method record_telemetry (mk_event_data : unit -> EventData.t) : unit =
       match server_config.telemetry_dir, telemetry_storage with
       (* No telemetry directory has been configured *)
       | None, _ -> ()
@@ -339,10 +338,13 @@ class lsp_server (env : Verify.cerb_env) =
          startup. *)
       | Some _, Some storage ->
         let session = Telemetry.Session.today () in
-        let event = Event.create ~session ~event_data in
-        (match Storage.store_event storage ~event with
-         | Ok () -> ()
-         | Error _e -> Log.e "couldn't store event")
+        (match mk_event_data () with
+         | exception e -> Log.e ("failed to create event data: " ^ Exn.to_string e)
+         | event_data ->
+           let event = Event.create ~session ~event_data in
+           (match Storage.store_event storage ~event with
+            | Ok () -> ()
+            | Error _e -> Log.e "couldn't store event"))
 
     method clear_diagnostics_for
       (notify_back : Rpc.notify_back)
@@ -413,7 +415,7 @@ let run ~(socket_path : string) : unit =
         (* Note: this is written this way to accomodate linol v0.6 - If
            upgrading to 0.7+, this logic can and should move to the
            [on_req_shutdown] method introduced in 0.7 *)
-        let event_data = EventData.{ event_type = ServerStop; event_result = None } in
+        let event_data () = EventData.{ event_type = ServerStop; event_result = None } in
         cn_server#record_telemetry event_data;
         true
       | `Running -> false

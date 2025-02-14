@@ -67,15 +67,18 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
         runCN();
     });
 
-    vsc.commands.registerCommand("CN.runOnFunction", (functionName: string) => {
-        runCN(functionName);
-    });
+    vsc.commands.registerCommand(
+        "CN.runOnFunction",
+        (functionName: string, functionRange: ct.Range) => {
+            runCN(functionName, functionRange);
+        }
+    );
 
     client.start();
     console.log("started client");
 }
 
-async function runCN(fn?: string) {
+async function runCN(functionName?: string, functionRange?: ct.Range) {
     const req = new ct.RequestType("$/runCN");
 
     const activeEditor = vsc.window.activeTextEditor;
@@ -86,7 +89,8 @@ async function runCN(fn?: string) {
 
     const params: VerifyParams = {
         uri: activeEditor.document.uri.toString(),
-        fn,
+        fn: functionName,
+        fnRange: functionRange
     };
 
     client.sendRequest(req, params);
@@ -97,6 +101,7 @@ async function runCN(fn?: string) {
 type VerifyParams = {
     uri: ct.DocumentUri;
     fn?: string;
+    fnRange?: ct.Range;
 };
 
 export function deactivate(): Thenable<void> | undefined {

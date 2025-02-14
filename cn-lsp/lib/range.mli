@@ -9,3 +9,5 @@ val to_string : t -> string
 val ( |--| ) : int * int -> int * int -> t
 
 val of_cerb_loc : Cerb_location.t -> t option
+val to_yojson : t -> Yojson.Safe.t
+val of_yojson : Yojson.Safe.t -> (t, string) Result.t
