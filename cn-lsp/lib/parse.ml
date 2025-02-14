@@ -129,3 +129,46 @@ let parse_document_file (uri : Uri.t) : (Cabs.external_declaration list, string)
     parse_document_source uri out.stdout
   | Error s -> Error s
 ;;
+
+let enumerate (xs : 'a list) : (int * 'a) list = List.mapi xs ~f:(fun i x -> i, x)
+
+(** The portion of the numbered line, if any, that's within the provided range *)
+let in_range (range : Range.t) (linenum : int) (line : string) : string option =
+  if linenum > range.start.line && linenum < range.end_.line
+  then Some line
+  else if linenum = range.start.line && linenum = range.end_.line
+  then
+    Some
+      (String.drop_prefix (String.prefix line range.end_.character) range.start.character)
+  else if linenum = range.start.line
+  then Some (String.drop_prefix line range.start.character)
+  else if linenum = range.end_.line
+  then Some (String.prefix line range.end_.character)
+  else None
+;;
+
+(** Extract the portion of [source] within [range], where the first character of
+    [source] is considered to be at line 0, character 0 *)
+let extract_from_source (range : Range.t) (source : string) : string =
+  let lines = enumerate (String.split_lines source) in
+  String.concat
+    (List.filter_map lines ~f:(fun (linenum, line) -> in_range range linenum line))
+    ~sep:"\n"
+;;
+
+(** Extract the portion of the provided file within [range] *)
+let extract_from_file (range : Range.t) (uri : Uri.t) : string =
+  let rec from_channel ic linenum acc =
+    match In_channel.input_line ic with
+    | None -> acc
+    | Some line ->
+      (match in_range range linenum line, acc with
+       | None, [] -> from_channel ic (linenum + 1) acc
+       | None, _ -> acc
+       | Some portion, _ -> from_channel ic (linenum + 1) (portion :: acc))
+  in
+  let portions =
+    In_channel.with_open_text (Uri.to_path uri) (fun ic -> from_channel ic 0 [])
+  in
+  String.concat (List.rev portions) ~sep:"\n"
+;;
