@@ -67,9 +67,12 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
         runCN();
     });
 
-    vsc.commands.registerCommand("CN.runOnFunction", (functionName: string) => {
-        runCN(functionName);
-    });
+    vsc.commands.registerCommand(
+        "CN.runOnFunction",
+        (functionName: string, functionRange: ct.Range) => {
+            runCN(functionName, functionRange);
+        }
+    );
 
     client.start();
     console.log("started client");
