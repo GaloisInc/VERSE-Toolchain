@@ -10,7 +10,7 @@ let mk_verify_lens (fundef : Cabs.function_definition) : CodeLens.t option =
   let command =
     Command.create ~command:"CN.runOnFunction" ~title:"Verify with CN" ~arguments ()
   in
-  match Parse.function_loc fundef with
+  match Range.of_cerb_loc (Parse.function_loc fundef) with
   | None ->
     Log.d
       (Printf.sprintf
@@ -26,6 +26,6 @@ let lenses_for (uri : Uri.t) : CodeLens.t list =
     Log.e (Printf.sprintf "Unable to parse file %s: %s" (Uri.to_path uri) e);
     []
   | Ok decls ->
-    let fns = Parse.function_declarations decls in
+    let fns = Parse.function_declarations decls ~only_from:(Some uri) in
     List.filter_map fns ~f:mk_verify_lens
 ;;

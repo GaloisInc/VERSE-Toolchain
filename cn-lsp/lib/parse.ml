@@ -22,17 +22,25 @@ let function_name (fd : Cabs.function_definition) : string =
 
 let function_loc
   (Cabs.FunDef (loc, _attrs, _specifiers, _declarator, _stmt) : Cabs.function_definition)
-  : Range.t option
+  : Cerb_location.t
   =
-  Range.of_cerb_loc loc
+  loc
 ;;
 
-let function_declarations (decls : Cabs.external_declaration list)
+let function_declarations
+  (decls : Cabs.external_declaration list)
+  ~(only_from : Uri.t option)
   : Cabs.function_definition list
   =
+  let only_from = Option.map only_from ~f:Uri.to_path in
   List.filter_map decls ~f:(fun decl ->
     match decl with
-    | Cabs.EDecl_func fd -> Some fd
+    | Cabs.EDecl_func fd ->
+      (match only_from, Cerb_location.get_filename (function_loc fd) with
+       | None, _ -> Some fd
+       | Some _, None -> None
+       | Some specified_source, Some actual_source ->
+         if String.equal specified_source actual_source then Some fd else None)
     | Cabs.EDecl_decl _
     | Cabs.EDecl_magic _
     | Cabs.EDecl_funcCN _
