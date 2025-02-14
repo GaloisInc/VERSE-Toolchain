@@ -24,3 +24,9 @@ let of_cerb_loc (loc : Cerb_location.t) : t option =
     let end_ = Position.create ~line:l2 ~character:c2 in
     Some (create ~start ~end_)
 ;;
+
+let to_yojson (range : t) : Yojson.Safe.t = Lsp.Types.Range.yojson_of_t range
+
+let of_yojson (js : Yojson.Safe.t) : (t, string) Result.t =
+  Ok (Lsp.Types.Range.t_of_yojson js)
+;;

@@ -75,7 +75,7 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
     console.log("started client");
 }
 
-async function runCN(fn?: string) {
+async function runCN(functionName?: string, functionRange?: ct.Range) {
     const req = new ct.RequestType("$/runCN");
 
     const activeEditor = vsc.window.activeTextEditor;
@@ -86,7 +86,8 @@ async function runCN(fn?: string) {
 
     const params: VerifyParams = {
         uri: activeEditor.document.uri.toString(),
-        fn,
+        fn: functionName,
+        fnRange: functionRange
     };
 
     client.sendRequest(req, params);
@@ -97,6 +98,7 @@ async function runCN(fn?: string) {
 type VerifyParams = {
     uri: ct.DocumentUri;
     fn?: string;
+    fnRange?: ct.Range;
 };
 
 export function deactivate(): Thenable<void> | undefined {

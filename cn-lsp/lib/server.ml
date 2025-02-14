@@ -51,6 +51,7 @@ module VerifyParams = struct
   type t =
     { uri : Uri.t
     ; fn : string option [@default None]
+    ; fn_range : Range.t option [@key "fnRange"] [@default None]
     }
   [@@deriving yojson]
 end
@@ -111,7 +112,7 @@ class lsp_server (env : Verify.cerb_env) =
       : unit IO.t =
       let open IO in
       if server_config.run_CN_on_save
-      then self#run_cn notify_back params.textDocument.uri ~fn:None
+      then self#run_cn notify_back params.textDocument.uri ~fn:None ~fn_range:None
       else return ()
 
     method on_notif_initialized (notify_back : Rpc.notify_back) : unit IO.t =
@@ -191,7 +192,7 @@ class lsp_server (env : Verify.cerb_env) =
          | Ok ps ->
            (* The URI isn't set automatically on unknown/custom requests *)
            let () = notify_back#set_uri ps.uri in
-           let* () = self#run_cn notify_back ps.uri ~fn:ps.fn in
+           let* () = self#run_cn notify_back ps.uri ~fn:ps.fn ~fn_range:ps.fn_range in
            return `Null)
       | _ -> failwith ("Unknown method: " ^ method_name)
 
@@ -271,6 +272,7 @@ class lsp_server (env : Verify.cerb_env) =
       (notify_back : Rpc.notify_back)
       (uri : DocumentUri.t)
       ~(fn : string option)
+      ~fn_range:(_ : Range.t option)
       : unit IO.t =
       let open IO in
       let begin_event =
