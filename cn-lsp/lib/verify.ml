@@ -59,10 +59,9 @@ let setup () : cerb_env m =
   return env
 ;;
 
-(** Run CN on the given document to potentially produce errors. Use [run] to
-    interpret the result, and [error_to_string] and [error_to_diagnostic] to
-    process any errors. *)
-let run_cn (cerb_env : cerb_env) (uri : Uri.t) : Error.t list m =
+(** In the given document, run CN (on [fn] if it's provided, or on every
+    function in the file if it's not) to potentially produce errors. *)
+let run_cn (cerb_env : cerb_env) (uri : Uri.t) ~(fn : string option) : Error.t list m =
   (* See https://github.com/GaloisInc/VERSE-Toolchain/issues/142 and
      https://github.com/rems-project/cerberus/pull/833 *)
   Cn.Solver.reset_model_evaluator_state ();
@@ -72,6 +71,7 @@ let run_cn (cerb_env : cerb_env) (uri : Uri.t) : Error.t list m =
   let* prog, (markers_env, ail_prog), _statement_locs =
     lift_cerb (LspCerb.frontend cerb_env path)
   in
+  Cn.Check.skip_and_only := [], Option.to_list fn;
   let* errors =
     lift_cn
       LspCn.(

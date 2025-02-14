@@ -48,6 +48,10 @@ wrong, a window should appear to tell you that. If something is wrong, you
 should (hopefully) see CN errors rendered inline as red "squiggles", either in
 the current file or in a file it depends on.
 
+You can run CN on individual functions in a file, instead of on the file at
+large, by clicking on the "code lens" that should appear above each function in
+the file.
+
 You can also choose to run CN on the current (`.c` or `.h`) file whenever it's
 saved, by opening settings (Cmd-,), searching for "CN", and selecting the
 checkbox for "Run On Save". You may not want to select this option if you're

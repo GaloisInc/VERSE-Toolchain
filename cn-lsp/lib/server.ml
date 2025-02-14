@@ -7,12 +7,15 @@ module IO = Rpc.IO
 
 (* LSP Types *)
 module CNotif = Lsp.Client_notification
+module CodeLens = Lsp.Types.CodeLens
+module CodeLensOptions = Lsp.Types.CodeLensOptions
 module ConfigurationItem = Lsp.Types.ConfigurationItem
 module ConfigurationParams = Lsp.Types.ConfigurationParams
 module Diagnostic = Lsp.Types.Diagnostic
 module DidSaveTextDocumentParams = Lsp.Types.DidSaveTextDocumentParams
 module DocumentUri = Lsp.Types.DocumentUri
 module MessageType = Lsp.Types.MessageType
+module ProgressToken = Lsp.Types.ProgressToken
 module PublishDiagnosticsParams = Lsp.Types.PublishDiagnosticsParams
 module Registration = Lsp.Types.Registration
 module RegistrationParams = Lsp.Types.RegistrationParams
@@ -40,6 +43,17 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
 ;;
 
 let sprintf = Printf.sprintf
+
+module VerifyParams = struct
+  (** The schema the server expects for verification command ("$/runCN")
+      arguments. Clients must respect this schema when issuing this command. *)
+
+  type t =
+    { uri : Uri.t
+    ; fn : string option [@default None]
+    }
+  [@@deriving yojson]
+end
 
 class lsp_server (env : Verify.cerb_env) =
   object (self)
@@ -97,7 +111,7 @@ class lsp_server (env : Verify.cerb_env) =
       : unit IO.t =
       let open IO in
       if server_config.run_CN_on_save
-      then self#run_cn notify_back params.textDocument.uri
+      then self#run_cn notify_back params.textDocument.uri ~fn:None
       else return ()
 
     method on_notif_initialized (notify_back : Rpc.notify_back) : unit IO.t =
@@ -149,6 +163,16 @@ class lsp_server (env : Verify.cerb_env) =
     (***************************************************************)
     (***  Requests  ************************************************)
 
+    method on_req_code_lens
+      ~notify_back:(_ : Rpc.notify_back)
+      ~id:(_ : Jsonrpc.Id.t)
+      ~(uri : DocumentUri.t)
+      ~workDoneToken:(_ : ProgressToken.t option)
+      ~partialResultToken:(_ : ProgressToken.t option)
+      (_ : Rpc.doc_state)
+      : CodeLens.t list IO.t =
+      IO.return (Lenses.lenses_for uri)
+
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
       ~server_request:(_ : Rpc.server_request_handler_pair -> Jsonrpc.Id.t IO.t)
@@ -159,19 +183,22 @@ class lsp_server (env : Verify.cerb_env) =
       let open IO in
       match method_name with
       | "$/runCN" ->
-        let obj = Jsonrpc.Structured.yojson_of_t (Option.value_exn params) in
-        let uri =
-          Json.Util.(
-            obj |> member "textDocument" |> member "uri" |> DocumentUri.t_of_yojson)
-        in
-        (* The URI isn't set automatically on unknown/custom requests *)
-        let () = notify_back#set_uri uri in
-        let* () = self#run_cn notify_back uri in
-        return `Null
+        (match
+           VerifyParams.of_yojson
+             (Jsonrpc.Structured.yojson_of_t (Option.value_exn params))
+         with
+         | Error s -> failwith ("Failed to decode '$/runCN' parameters: " ^ s)
+         | Ok ps ->
+           (* The URI isn't set automatically on unknown/custom requests *)
+           let () = notify_back#set_uri ps.uri in
+           let* () = self#run_cn notify_back ps.uri ~fn:ps.fn in
+           return `Null)
       | _ -> failwith ("Unknown method: " ^ method_name)
 
     (***************************************************************)
     (***  Other  ***************************************************)
+
+    method config_code_lens_options = Some (CodeLensOptions.create ())
 
     (** Fetch the client's current configuration *)
     method fetch_configuration (notify_back : Rpc.notify_back) : ServerConfig.t IO.t =
@@ -240,7 +267,11 @@ class lsp_server (env : Verify.cerb_env) =
       in
       self#register_capability ~notify_back ~method_ ~registerOptions ()
 
-    method run_cn (notify_back : Rpc.notify_back) (uri : DocumentUri.t) : unit IO.t =
+    method run_cn
+      (notify_back : Rpc.notify_back)
+      (uri : DocumentUri.t)
+      ~(fn : string option)
+      : unit IO.t =
       let open IO in
       let begin_event =
         EventData.
@@ -253,7 +284,7 @@ class lsp_server (env : Verify.cerb_env) =
           ; event_result = Some (Failure { causes })
           }
       in
-      match Verify.(run_cn env uri) with
+      match Verify.(run_cn env uri ~fn) with
       | Ok [] ->
         let end_event =
           EventData.
