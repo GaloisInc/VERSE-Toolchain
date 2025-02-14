@@ -28,9 +28,8 @@ module VersionedTextDocumentIdentifier = Lsp.Types.VersionedTextDocumentIdentifi
 
 (* Telemetry *)
 module EventData = ServerTelemetry.EventData
-module ProfileData = ServerTelemetry.ProfileData
-module Event = Telemetry.Event.M (EventData)
-module Storage = Telemetry.Disk.M (EventData) (ProfileData)
+module Storage = ServerTelemetry.Storage
+module TelemetryError = ServerTelemetry.Error
 
 let cwindow (level : MessageType.t) (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   let params = ShowMessageParams.create ~message:msg ~type_:level in
@@ -40,6 +39,10 @@ let cwindow (level : MessageType.t) (notify : Rpc.notify_back) (msg : string) : 
 
 let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   cwindow MessageType.Info notify msg
+;;
+
+let cerror (notify : Rpc.notify_back) (msg : string) : unit IO.t =
+  cwindow MessageType.Error notify msg
 ;;
 
 let sprintf = Printf.sprintf
@@ -54,6 +57,15 @@ module VerifyParams = struct
     ; fn_range : Range.t option [@key "fnRange"] [@default None]
     }
   [@@deriving yojson]
+end
+
+module Error = struct
+  type t = TelemetryError of TelemetryError.t
+
+  let to_string (err : t) : string =
+    match err with
+    | TelemetryError s -> sprintf "telemetry error: %s" (TelemetryError.to_string s)
+  ;;
 end
 
 class lsp_server (env : Verify.cerb_env) =
@@ -119,9 +131,16 @@ class lsp_server (env : Verify.cerb_env) =
       let open IO in
       let* cfg = self#fetch_configuration notify_back in
       server_config <- cfg;
-      (match server_config.telemetry_dir with
-       | None -> ()
-       | Some dir -> self#initialize_telemetry dir);
+      let* () =
+        match server_config.telemetry_dir with
+        | None -> return ()
+        | Some dir ->
+          (match self#initialize_telemetry dir with
+           | Ok _ -> return ()
+           | Error e ->
+             Log.e (sprintf "Unable to initialize telemetry: %s" (Error.to_string e));
+             cerror notify_back "Unable to initialize telemetry")
+      in
       let event_data () = EventData.{ event_type = ServerStart; event_result = None } in
       self#record_telemetry event_data;
       let* () = self#register_did_change_configuration notify_back in
@@ -310,41 +329,35 @@ class lsp_server (env : Verify.cerb_env) =
          | Some (diag_uri, diag) ->
            self#publish_diagnostics_for notify_back diag_uri [ diag ])
 
-    method initialize_telemetry (dir : string) : unit =
-      match Storage.(create { root_dir = dir }) with
-      | Error _e -> Log.e "Unable to create telemetry storage"
+    method initialize_telemetry (dir : string) : (Storage.t, Error.t) Result.t =
+      match ServerTelemetry.initialize ~dir ~user_id:server_config.user_id with
+      | Error e -> Error (TelemetryError e)
       | Ok storage ->
         telemetry_storage <- Some storage;
-        (match server_config.user_id with
-         | None -> ()
-         | Some id ->
-           let profile = ProfileData.{ id } in
-           (match Storage.store_profile storage ~profile with
-            | Error _e -> Log.e "Unable to save user ID"
-            | Ok (Some prev) ->
-              Log.d (sprintf "Wrote new ID %s (overwrite existing ID %s)" id prev.id)
-            | Ok None -> Log.d (sprintf "Wrote new ID %s" id)))
+        Ok storage
 
     method record_telemetry (mk_event_data : unit -> EventData.t) : unit =
+      let do_record storage =
+        match ServerTelemetry.record storage mk_event_data with
+        | Ok () -> ()
+        | Error e ->
+          Log.e (sprintf "Unable to record telemetry: %s" (TelemetryError.to_string e))
+      in
       match server_config.telemetry_dir, telemetry_storage with
       (* No telemetry directory has been configured *)
       | None, _ -> ()
       (* A directory has been configured, but for some reason we haven't
          initialized telemetry storage *)
-      | Some dir, None -> self#initialize_telemetry dir
+      | Some dir, None ->
+        (match self#initialize_telemetry dir with
+         | Error e ->
+           Log.e (sprintf "Unable to initialize telemetry: %s" (Error.to_string e))
+         | Ok storage -> do_record storage)
       (* A directory has been configured and we've initialized storage. Don't
          check that the directory and initialized storage match, because we only
          promise to initialize storage based on the directory configured at
          startup. *)
-      | Some _, Some storage ->
-        let session = Telemetry.Session.today () in
-        (match mk_event_data () with
-         | exception e -> Log.e ("failed to create event data: " ^ Exn.to_string e)
-         | event_data ->
-           let event = Event.create ~session ~event_data in
-           (match Storage.store_event storage ~event with
-            | Ok () -> ()
-            | Error _e -> Log.e "couldn't store event"))
+      | Some _, Some storage -> do_record storage
 
     method clear_diagnostics_for
       (notify_back : Rpc.notify_back)
