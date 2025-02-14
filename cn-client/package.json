@@ -29,6 +29,10 @@
             {
                 "command": "CN.runOnFile",
                 "title": "CN: Run CN on the current file"
+            },
+            {
+                "command": "CN.runOnFunction",
+                "title": "CN: Run CN on the specified function"
             }
         ],
         "configuration": {

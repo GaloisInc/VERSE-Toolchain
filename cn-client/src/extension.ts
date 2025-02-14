@@ -64,23 +64,32 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
     );
 
     vsc.commands.registerCommand("CN.runOnFile", () => {
-        const req = new ct.RequestType("$/runCN");
+        runCN();
+    });
 
-        const activeEditor = vsc.window.activeTextEditor;
-        if (activeEditor === undefined) {
-            vsc.window.showErrorMessage("CN client: no file currently open");
-            return;
-        }
-
-        const params: VerifyParams = {
-            uri: activeEditor.document.uri.toString(),
-        };
-
-        client.sendRequest(req, params);
+    vsc.commands.registerCommand("CN.runOnFunction", (functionName: string) => {
+        runCN(functionName);
     });
 
     client.start();
     console.log("started client");
+}
+
+async function runCN(fn?: string) {
+    const req = new ct.RequestType("$/runCN");
+
+    const activeEditor = vsc.window.activeTextEditor;
+    if (activeEditor === undefined) {
+        vsc.window.showErrorMessage("CN client: no file currently open");
+        return;
+    }
+
+    const params: VerifyParams = {
+        uri: activeEditor.document.uri.toString(),
+        fn,
+    };
+
+    client.sendRequest(req, params);
 }
 
 // This schema is meant to match the one defined by `cn-lsp`'s
