@@ -11,8 +11,14 @@ module EventData = struct
   type event_type =
     | ServerStart
     | ServerStop
-    | BeginVerify of { file : string }
-    | EndVerify of { file : string }
+    | BeginVerify of
+        { file : string
+        ; fn_name : string option
+        }
+    | EndVerify of
+        { file : string
+        ; fn_name : string option
+        }
     | OpenFile of { file : string }
     | CloseFile of { file : string }
     | ChangeConfiguration of { cfg : ServerConfig.t }

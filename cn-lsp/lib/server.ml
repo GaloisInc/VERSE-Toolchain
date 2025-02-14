@@ -275,12 +275,14 @@ class lsp_server (env : Verify.cerb_env) =
       let open IO in
       let begin_event =
         EventData.
-          { event_type = BeginVerify { file = Uri.to_path uri }; event_result = None }
+          { event_type = BeginVerify { file = Uri.to_path uri; fn_name = fn }
+          ; event_result = None
+          }
       in
       self#record_telemetry begin_event;
       let failure (causes : string list) : EventData.t =
         EventData.
-          { event_type = EndVerify { file = Uri.to_path uri }
+          { event_type = EndVerify { file = Uri.to_path uri; fn_name = fn }
           ; event_result = Some (Failure { causes })
           }
       in
@@ -288,7 +290,7 @@ class lsp_server (env : Verify.cerb_env) =
       | Ok [] ->
         let end_event =
           EventData.
-            { event_type = EndVerify { file = Uri.to_path uri }
+            { event_type = EndVerify { file = Uri.to_path uri; fn_name = fn }
             ; event_result = Some Success
             }
         in
