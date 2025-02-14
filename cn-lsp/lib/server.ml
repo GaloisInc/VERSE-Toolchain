@@ -272,12 +272,15 @@ class lsp_server (env : Verify.cerb_env) =
       (notify_back : Rpc.notify_back)
       (uri : DocumentUri.t)
       ~(fn : string option)
-      ~fn_range:(_ : Range.t option)
+      ~(fn_range : Range.t option)
       : unit IO.t =
       let open IO in
+      let fn_body =
+        Option.map fn_range ~f:(fun range -> Parse.extract_from_file range uri)
+      in
       let begin_event =
         EventData.
-          { event_type = BeginVerify { file = Uri.to_path uri; fn_name = fn }
+          { event_type = BeginVerify { file = Uri.to_path uri; fn_name = fn; fn_body }
           ; event_result = None
           }
       in

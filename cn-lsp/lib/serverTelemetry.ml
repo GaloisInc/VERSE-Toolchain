@@ -14,6 +14,7 @@ module EventData = struct
     | BeginVerify of
         { file : string
         ; fn_name : string option
+        ; fn_body : string option
         }
     | EndVerify of
         { file : string
