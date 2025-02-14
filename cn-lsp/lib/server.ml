@@ -7,12 +7,15 @@ module IO = Rpc.IO
 
 (* LSP Types *)
 module CNotif = Lsp.Client_notification
+module CodeLens = Lsp.Types.CodeLens
+module CodeLensOptions = Lsp.Types.CodeLensOptions
 module ConfigurationItem = Lsp.Types.ConfigurationItem
 module ConfigurationParams = Lsp.Types.ConfigurationParams
 module Diagnostic = Lsp.Types.Diagnostic
 module DidSaveTextDocumentParams = Lsp.Types.DidSaveTextDocumentParams
 module DocumentUri = Lsp.Types.DocumentUri
 module MessageType = Lsp.Types.MessageType
+module ProgressToken = Lsp.Types.ProgressToken
 module PublishDiagnosticsParams = Lsp.Types.PublishDiagnosticsParams
 module Registration = Lsp.Types.Registration
 module RegistrationParams = Lsp.Types.RegistrationParams
@@ -160,6 +163,16 @@ class lsp_server (env : Verify.cerb_env) =
     (***************************************************************)
     (***  Requests  ************************************************)
 
+    method on_req_code_lens
+      ~notify_back:(_ : Rpc.notify_back)
+      ~id:(_ : Jsonrpc.Id.t)
+      ~(uri : DocumentUri.t)
+      ~workDoneToken:(_ : ProgressToken.t option)
+      ~partialResultToken:(_ : ProgressToken.t option)
+      (_ : Rpc.doc_state)
+      : CodeLens.t list IO.t =
+      IO.return (Lenses.lenses_for uri)
+
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
       ~server_request:(_ : Rpc.server_request_handler_pair -> Jsonrpc.Id.t IO.t)
@@ -184,6 +197,8 @@ class lsp_server (env : Verify.cerb_env) =
 
     (***************************************************************)
     (***  Other  ***************************************************)
+
+    method config_code_lens_options = Some (CodeLensOptions.create ())
 
     (** Fetch the client's current configuration *)
     method fetch_configuration (notify_back : Rpc.notify_back) : ServerConfig.t IO.t =
