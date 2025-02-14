@@ -6,7 +6,7 @@
         "url": "https://github.com/GaloisInc/VERSE-Toolchain",
         "type": "git"
     },
-    "version": "0.0.4",
+    "version": "0.0.5",
     "engines": {
         "vscode": "^1.75.0"
     },
