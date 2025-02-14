@@ -34,12 +34,32 @@ module Session = struct
   ;;
 end
 
+module Error = struct
+  type t =
+    | Deserialization of string
+    | FileNotFound of string
+    | Multiple of t list
+    | Serialization of string
+
+  let rec to_string (err : t) : string =
+    match err with
+    | Deserialization s -> Printf.sprintf "deserialization error: %s" s
+    | FileNotFound file -> Printf.sprintf "file '%s' not found" file
+    | Multiple errs ->
+      Printf.sprintf
+        "multiple errors: %s"
+        (String.concat (List.map errs ~f:to_string) ~sep:", ")
+    | Serialization s -> Printf.sprintf "serialization error: %s" s
+  ;;
+end
+
 (** Disk-backed storage of events that contain the given [EventData]. *)
 module M (EventData : EventData.S) (ProfileData : ProfileData.S) :
   Storage.S
   with type config = cfg
    and type event = Event.M(EventData).t
-   and type profile = ProfileData.t = struct
+   and type profile = ProfileData.t
+   and type err = Error.t = struct
   (** With a root directory called "sample", here's how events in two different
       sessions from two different sources are organized:
 
@@ -81,15 +101,9 @@ module M (EventData : EventData.S) (ProfileData : ProfileData.S) :
 
   type t = { root_dir : string }
   type config = cfg
-
-  type err =
-    | Deserialization of string
-    | Multiple of err list
-    | Serialization of string
-    | FileNotFound of string
-
   type event = Event.t
   type profile = ProfileData.t
+  type err = Error.t
 
   (** Convert a possibly-relative filepath into an absolute one *)
   let canonicalize (path : string) : string =
@@ -196,7 +210,7 @@ module M (EventData : EventData.S) (ProfileData : ProfileData.S) :
            Yojson.Safe.to_channel ~suf:"\n" out_chan json;
            Ok ()
          with
-         | Yojson.Json_error s -> Error (Serialization s))
+         | Yojson.Json_error s -> Error (Error.Serialization s))
   ;;
 
   (** Store the original source string, if necessary, then store the event. *)
@@ -216,7 +230,7 @@ module M (EventData : EventData.S) (ProfileData : ProfileData.S) :
         List.mapi objs ~f:(fun i obj ->
           match stored_event_of_yojson obj with
           | Ok e -> Ok e
-          | Error s -> Error (Deserialization (Printf.sprintf "object %i: %s" i s)))
+          | Error s -> Error (Error.Deserialization (Printf.sprintf "object %i: %s" i s)))
       in
       let stored_events, errors = List.partition_result load_results in
       let events = List.map stored_events ~f:(stored_event_to_event session) in
@@ -236,10 +250,10 @@ module M (EventData : EventData.S) (ProfileData : ProfileData.S) :
       let@ json =
         try Ok (Yojson.Safe.from_file profile_f) with
         | Yojson.Json_error e ->
-          Error (Deserialization (Printf.sprintf "profile file: %s" e))
+          Error (Error.Deserialization (Printf.sprintf "profile file: %s" e))
       in
       match ProfileData.of_yojson json with
-      | Error e -> Error (Deserialization (Printf.sprintf "profile object: %s" e))
+      | Error e -> Error (Error.Deserialization (Printf.sprintf "profile object: %s" e))
       | Ok profile -> Ok (Some profile)
   ;;
 
