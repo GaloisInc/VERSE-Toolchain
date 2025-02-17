@@ -308,6 +308,18 @@ class lsp_server (env : Verify.cerb_env) =
           }
       in
       self#record_telemetry begin_event;
+      let token = Progress.Token.anonymous () in
+      let* () = self#register_progress_token notify_back token in
+      let target =
+        let file = Stdlib.Filename.basename (Uri.to_path uri) in
+        match fn with
+        | None -> file
+        | Some fn -> sprintf "%s (%s)" file fn
+      in
+      let* () =
+        notify_back#send_notification
+          (Progress.notif_begin token ~title:(sprintf "Running CN on %s..." target))
+      in
       let run () =
         match Verify.(run_cn env uri ~fn) with
         | Ok [] -> []
@@ -315,10 +327,11 @@ class lsp_server (env : Verify.cerb_env) =
         | Error err -> [ err ]
       in
       let process errors =
+        let* () = notify_back#send_notification (Progress.notif_end token) in
         match errors with
         | [] ->
           self#record_telemetry (end_event Success);
-          cinfo notify_back "No issues found"
+          cinfo notify_back (sprintf "No issues found in %s" target)
         | _ ->
           let causes = List.map errors ~f:Verify.Error.to_string in
           self#record_telemetry (end_event (Failure { causes }));
@@ -326,7 +339,13 @@ class lsp_server (env : Verify.cerb_env) =
           let* () = Lwt.pause () in
           self#publish_all notify_back diagnostics
       in
-      process (run ())
+      (* These [pause]s prevent this entire method from blocking on
+         verification, which in turn seems to free up the client to process and
+         display our progress notifications *)
+      let* () = Lwt.pause () in
+      let errors = run () in
+      let* () = Lwt.pause () in
+      process errors
 
     method initialize_telemetry (dir : string) : unit =
       match Storage.(create { root_dir = dir }) with
