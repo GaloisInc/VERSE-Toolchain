@@ -5,6 +5,23 @@ module SReq = Lsp.Server_request
 module Token = struct
   type t = Lsp.Types.ProgressToken.t
 
+  let fold (x : t) ~(int : int -> 'a) ~(str : string -> 'a) : 'a =
+    match x with
+    | `Int i -> int i
+    | `String s -> str s
+  ;;
+
+  let to_string (x : t) : string = fold x ~int:Int.to_string ~str:Fn.id
+
+  let compare (a : t) (b : t) : int =
+    let int a = fold b ~int:(Int.compare a) ~str:(fun _ -> -1) in
+    let str a = fold b ~int:(fun _ -> 1) ~str:(String.compare a) in
+    fold a ~int ~str
+  ;;
+
+  let hash (x : t) : int = fold x ~int:Int.hash ~str:String.hash
+  let sexp_of_t (x : t) : Sexp.t = fold x ~int:Int.sexp_of_t ~str:String.sexp_of_t
+
   (** Create a fresh, nameless token, guaranteed to be different from all
       previously-created tokens *)
   let anonymous : unit -> t =

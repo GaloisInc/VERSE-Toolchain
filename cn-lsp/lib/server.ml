@@ -61,6 +61,10 @@ class lsp_server (env : Verify.cerb_env) =
     val env : Verify.cerb_env = env
     val mutable server_config : ServerConfig.t = ServerConfig.default
     val mutable telemetry_storage : Storage.t option = None
+
+    val verifications_in_progress : (Progress.Token.t, unit IO.t) Hashtbl.t =
+      Hashtbl.create (module Progress.Token)
+
     inherit Rpc.server
 
     (* Required *)
@@ -328,6 +332,7 @@ class lsp_server (env : Verify.cerb_env) =
       in
       let process errors =
         let* () = notify_back#send_notification (Progress.notif_end token) in
+        Hashtbl.remove verifications_in_progress token;
         match errors with
         | [] ->
           self#record_telemetry (end_event Success);
@@ -342,10 +347,14 @@ class lsp_server (env : Verify.cerb_env) =
       (* These [pause]s prevent this entire method from blocking on
          verification, which in turn seems to free up the client to process and
          display our progress notifications *)
-      let* () = Lwt.pause () in
-      let errors = run () in
-      let* () = Lwt.pause () in
-      process errors
+      let verification =
+        let* () = Lwt.pause () in
+        let errors = run () in
+        let* () = Lwt.pause () in
+        process errors
+      in
+      Hashtbl.add_exn verifications_in_progress ~key:token ~data:verification;
+      return ()
 
     method initialize_telemetry (dir : string) : unit =
       match Storage.(create { root_dir = dir }) with
