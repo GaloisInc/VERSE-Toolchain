@@ -308,24 +308,25 @@ class lsp_server (env : Verify.cerb_env) =
           }
       in
       self#record_telemetry begin_event;
-      match Verify.(run_cn env uri ~fn) with
-      | Ok [] ->
-        self#record_telemetry (end_event Success);
-        cinfo notify_back "No issues found"
-      | Ok errs ->
-        let causes = List.map errs ~f:Verify.Error.to_string in
-        self#record_telemetry (end_event (Failure { causes }));
-        let diagnostics = Hashtbl.to_alist (Verify.Error.to_diagnostics errs) in
-        self#publish_all notify_back diagnostics
-      | Error err ->
-        let causes = [ Verify.Error.to_string err ] in
-        self#record_telemetry (end_event (Failure { causes }));
-        (match Verify.Error.to_diagnostic err with
-         | None ->
-           Log.e (sprintf "Unable to decode error: %s" (Verify.Error.to_string err));
-           return ()
-         | Some (diag_uri, diag) ->
-           self#publish_diagnostics_for notify_back diag_uri [ diag ])
+      let run () =
+        match Verify.(run_cn env uri ~fn) with
+        | Ok [] -> []
+        | Ok errs -> errs
+        | Error err -> [ err ]
+      in
+      let process errors =
+        match errors with
+        | [] ->
+          self#record_telemetry (end_event Success);
+          cinfo notify_back "No issues found"
+        | _ ->
+          let causes = List.map errors ~f:Verify.Error.to_string in
+          self#record_telemetry (end_event (Failure { causes }));
+          let diagnostics = Hashtbl.to_alist (Verify.Error.to_diagnostics errors) in
+          let* () = Lwt.pause () in
+          self#publish_all notify_back diagnostics
+      in
+      process (run ())
 
     method initialize_telemetry (dir : string) : unit =
       match Storage.(create { root_dir = dir }) with
