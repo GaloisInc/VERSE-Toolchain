@@ -138,6 +138,15 @@ class lsp_server (env : Verify.cerb_env) =
       let open IO in
       match notif with
       | CNotif.Initialized -> self#on_notif_initialized notify_back
+      | CNotif.WorkDoneProgressCancel params ->
+        let s = Progress.Token.to_string params.token in
+        (match Hashtbl.find verifications_in_progress params.token with
+         | Some work ->
+           Log.d (sprintf "Attempting to cancel verification (token: %s)" s);
+           Lwt.cancel work;
+           Hashtbl.remove verifications_in_progress params.token
+         | None -> Log.d (sprintf "No pending verification found (token: %s)" s));
+        return ()
       | CNotif.ChangeConfiguration params ->
         let config_section = params.settings |> Json.Util.member ServerConfig.section in
         (match ServerConfig.of_yojson config_section with

@@ -39,7 +39,7 @@ end
 (** A server-provided notification for the client to start displaying progress
     against the given [token]. *)
 let notif_begin (token : Token.t) ~(title : string) : SNotif.t =
-  let begin_ = Lsp.Types.WorkDoneProgressBegin.create ~title () in
+  let begin_ = Lsp.Types.WorkDoneProgressBegin.create ~cancellable:true ~title () in
   let progress = Lsp.Progress.Begin begin_ in
   let params = Lsp.Types.ProgressParams.create ~token ~value:progress in
   SNotif.WorkDoneProgress params
