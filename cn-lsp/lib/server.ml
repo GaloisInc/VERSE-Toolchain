@@ -268,6 +268,23 @@ class lsp_server (env : Verify.cerb_env) =
       in
       self#register_capability ~notify_back ~method_ ~registerOptions ()
 
+    method register_progress_token
+      (notify_back : Rpc.notify_back)
+      (token : Progress.Token.t)
+      : unit IO.t =
+      let open IO in
+      let handle (response : (unit, Jsonrpc.Response.Error.t) Result.t) : unit IO.t =
+        match response with
+        | Ok () ->
+          Log.d "register_progress_token: successfully registered token";
+          return ()
+        | Error e ->
+          Log.e (sprintf "register_progress_token: error registering token: %s" e.message);
+          return ()
+      in
+      let _id = notify_back#send_request (Progress.req_create token) handle in
+      return ()
+
     method run_cn
       (notify_back : Rpc.notify_back)
       (uri : DocumentUri.t)
