@@ -80,6 +80,15 @@ If the server fails to run CN or interpret its output, you can open up the
 to see what output CN is producing and why the server is having trouble.
 
 
+# Troubleshooting
+
+The simplest way to get the client and/or server out of a bad state is to reload
+the VSCode window. You can do this by opening the command palette (Cmd-Shift-P)
+and typing "Reload Window". This should bring up a menu item titled "Developer:
+Reload Window" - press enter to select it. The window will be reloaded and the
+server will be restarted.
+
+
 # Collecting Telemetry
 
 Our CN language server supports optional collection of user telemetry, to
