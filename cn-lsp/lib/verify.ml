@@ -25,7 +25,9 @@ module Error = struct
     let diags = Hashtbl.create (module Uri) in
     let add err =
       match to_diagnostic err with
-      | None -> ()
+      | None ->
+        Log.e
+          (Printf.sprintf "to_diagnostics: unable to interpret error: %s" (to_string err))
       | Some (uri, diag) -> Hashtbl.add_multi diags ~key:uri ~data:diag
     in
     List.iter errs ~f:add;

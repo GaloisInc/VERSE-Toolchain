@@ -268,6 +268,23 @@ class lsp_server (env : Verify.cerb_env) =
       in
       self#register_capability ~notify_back ~method_ ~registerOptions ()
 
+    method register_progress_token
+      (notify_back : Rpc.notify_back)
+      (token : Progress.Token.t)
+      : unit IO.t =
+      let open IO in
+      let handle (response : (unit, Jsonrpc.Response.Error.t) Result.t) : unit IO.t =
+        match response with
+        | Ok () ->
+          Log.d "register_progress_token: successfully registered token";
+          return ()
+        | Error e ->
+          Log.e (sprintf "register_progress_token: error registering token: %s" e.message);
+          return ()
+      in
+      let _id = notify_back#send_request (Progress.req_create token) handle in
+      return ()
+
     method run_cn
       (notify_back : Rpc.notify_back)
       (uri : DocumentUri.t)
@@ -291,24 +308,44 @@ class lsp_server (env : Verify.cerb_env) =
           }
       in
       self#record_telemetry begin_event;
-      match Verify.(run_cn env uri ~fn) with
-      | Ok [] ->
-        self#record_telemetry (end_event Success);
-        cinfo notify_back "No issues found"
-      | Ok errs ->
-        let causes = List.map errs ~f:Verify.Error.to_string in
-        self#record_telemetry (end_event (Failure { causes }));
-        let diagnostics = Hashtbl.to_alist (Verify.Error.to_diagnostics errs) in
-        self#publish_all notify_back diagnostics
-      | Error err ->
-        let causes = [ Verify.Error.to_string err ] in
-        self#record_telemetry (end_event (Failure { causes }));
-        (match Verify.Error.to_diagnostic err with
-         | None ->
-           Log.e (sprintf "Unable to decode error: %s" (Verify.Error.to_string err));
-           return ()
-         | Some (diag_uri, diag) ->
-           self#publish_diagnostics_for notify_back diag_uri [ diag ])
+      let token = Progress.Token.anonymous () in
+      let* () = self#register_progress_token notify_back token in
+      let target =
+        let file = Stdlib.Filename.basename (Uri.to_path uri) in
+        match fn with
+        | None -> file
+        | Some fn -> sprintf "%s (%s)" file fn
+      in
+      let* () =
+        notify_back#send_notification
+          (Progress.notif_begin token ~title:(sprintf "Running CN on %s..." target))
+      in
+      let run () =
+        match Verify.(run_cn env uri ~fn) with
+        | Ok [] -> []
+        | Ok errs -> errs
+        | Error err -> [ err ]
+      in
+      let process errors =
+        let* () = notify_back#send_notification (Progress.notif_end token) in
+        match errors with
+        | [] ->
+          self#record_telemetry (end_event Success);
+          cinfo notify_back (sprintf "No issues found in %s" target)
+        | _ ->
+          let causes = List.map errors ~f:Verify.Error.to_string in
+          self#record_telemetry (end_event (Failure { causes }));
+          let diagnostics = Hashtbl.to_alist (Verify.Error.to_diagnostics errors) in
+          let* () = Lwt.pause () in
+          self#publish_all notify_back diagnostics
+      in
+      (* These [pause]s prevent this entire method from blocking on
+         verification, which in turn seems to free up the client to process and
+         display our progress notifications *)
+      let* () = Lwt.pause () in
+      let errors = run () in
+      let* () = Lwt.pause () in
+      process errors
 
     method initialize_telemetry (dir : string) : unit =
       match Storage.(create { root_dir = dir }) with
