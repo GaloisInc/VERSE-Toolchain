@@ -31,11 +31,27 @@ the last step from VSCode's GUI:
 
 Running CN requires that the client be able to find and run a CN language
 server. [The top-level README](../README.md) has instructions for a basic
-installation of our server. In the client, you'll be prompted to select the opam
-switch you created for the installation. Your choice is preserved on a
-per-workspace basis, and can be changed by editing your workspace settings. If
-you don't choose, the client will search these locations (in order) for a server
-executable:
+installation of our server involving a "local" [opam
+switch](https://ocaml.org/docs/opam-switch-introduction).
+
+The first time you launch the client, you'll automatically be prompted to select
+the opam switch you created for the server's installation. Your choice is
+preserved on a per-workspace basis. If you've previously pointed the client to a
+switch, or to a server binary and Cerberus runtime files, and would like to
+change your selection, you can open this extension's settings and either:
+1.  (Recommended) Delete the existing paths for "Server Path" and "Cerb Runtime"
+    and reload or restart VSCode window - you'll then be prompted to select a
+    switch.
+2.  Manually edit one or both of those two paths to point to whatever server and
+    runtime files you want. These files will probably be at paths rooted in an
+    opam switch. If the switch in question is local and you initialized it in
+    `/path/to/dir`, the switch's path is `/path/to/dir/_opam`. If your switch is
+    global and called `foo`, the switch's path should be `$HOME/.opam/foo`. You
+    should only edit the switch portion of the paths
+
+
+If you exit the choice prompt, the client will search these locations (in order)
+for a server executable:
 - The `CN_LSP_SERVER` environment variable
 - On the current `PATH`, for an executable named `cn-lsp-server`
 
