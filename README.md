@@ -52,14 +52,13 @@ TBD: Links to project pages, more details as we discover them.
 ## Installation and Use
 
 Begin by installing OCaml and opam, if need be - here are
-[instructions](https://ocaml.org/docs/installing-ocaml) for how to do so. This
-build process has been tested with OCaml 4.14.1 and 5.1.1, though other versions
-are likely to work as well.
+[instructions](https://ocaml.org/docs/installing-ocaml) for how to do so. We
+recommend using OCaml version 5.1.1.
 
 With a choice of version in hand, the easiest way to build this repo's packages
 is with a local opam switch, like so:
 ```sh
-VERSION=4.14.1  # or 5.1.1
+VERSION=5.1.1  # or e.g. 4.14.1
 ln -s telemetry.opam.locked-$VERSION telemetry.opam.locked
 ln -s cn-lsp.opam.locked-$VERSION cn-lsp.opam.locked
 opam switch create . ocaml.$VERSION --locked -y
