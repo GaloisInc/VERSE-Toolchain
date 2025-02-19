@@ -57,6 +57,9 @@ build process relies on using a local opam switch based on OCaml 5.1.1. (Prior
 versions of the server supported earlier versions of OCaml, but the current one
 does not.)
 
+The server also requires that [z3](https://github.com/Z3Prover/z3/releases) be
+installed and available on your `$PATH`. 
+
 (Note: this server has not been regularly built or tested on Windows; these
 instructions assume you're using Linux or macOS.)
 
