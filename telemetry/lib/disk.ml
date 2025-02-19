@@ -91,15 +91,6 @@ module M (EventData : EventData.S) (ProfileData : ProfileData.S) :
   type event = Event.t
   type profile = ProfileData.t
 
-  (** Convert a possibly-relative filepath into an absolute one *)
-  let canonicalize (path : string) : string =
-    if Filename.is_relative path
-    then (
-      let current_dir = Stdlib.Sys.getcwd () in
-      Filename.concat current_dir path)
-    else path
-  ;;
-
   (** Like [mkdir -p] - create the specified directory, while creating any
       intermediate directories as required, and without failing if any directory
       already exists *)
@@ -114,7 +105,7 @@ module M (EventData : EventData.S) (ProfileData : ProfileData.S) :
   (** Create a storage instance rooted in the [config]-specified directory,
       creating the directory if it doesn't exist and succeeding if it does. *)
   let create (config : config) : (t, err) Result.t =
-    let canonical_root_dir = canonicalize config.root_dir in
+    let canonical_root_dir = Filename_extended.expand config.root_dir in
     mkdir_p canonical_root_dir;
     Ok { root_dir = Unix.realpath canonical_root_dir }
   ;;
