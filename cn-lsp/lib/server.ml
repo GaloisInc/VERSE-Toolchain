@@ -42,6 +42,10 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   cwindow MessageType.Info notify msg
 ;;
 
+let cwarn (notify : Rpc.notify_back) (msg : string) : unit IO.t =
+  cwindow MessageType.Warning notify msg
+;;
+
 let sprintf = Printf.sprintf
 
 module VerifyParams = struct
@@ -165,14 +169,24 @@ class lsp_server (env : Verify.cerb_env) =
     (***  Requests  ************************************************)
 
     method on_req_code_lens
-      ~notify_back:(_ : Rpc.notify_back)
+      ~(notify_back : Rpc.notify_back)
       ~id:(_ : Jsonrpc.Id.t)
       ~(uri : DocumentUri.t)
       ~workDoneToken:(_ : ProgressToken.t option)
       ~partialResultToken:(_ : ProgressToken.t option)
       (_ : Rpc.doc_state)
       : CodeLens.t list IO.t =
-      IO.return (Lenses.lenses_for uri)
+      let open IO in
+      match Lenses.lenses_for uri with
+      | [], [] ->
+        Log.d (sprintf "no lenses for %s" (Uri.to_string uri));
+        IO.return []
+      | lenses, [] -> IO.return lenses
+      | lenses, errors ->
+        List.iter errors ~f:(fun e ->
+          Log.e (sprintf "lens: %s" (Lenses.Error.to_string e)));
+        let* () = cwarn notify_back "Errors in code lens creation - see logs" in
+        IO.return lenses
 
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
