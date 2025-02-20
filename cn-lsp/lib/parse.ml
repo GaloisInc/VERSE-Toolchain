@@ -82,7 +82,41 @@ type proc_out =
   ; stderr : string
   }
 
-let read_process (cmd : string) (args : string array) : (proc_out, string) Result.t =
+module Error = struct
+  type t =
+    | Parse of
+        { loc : Cerb_location.t
+        ; cause : CF.Errors.cause
+        }
+    | Preprocess of
+        { uri : Uri.t
+        ; result : proc_out
+        }
+    | Process of
+        { code : Unix.error
+        ; fn : string
+        ; param : string
+        }
+
+  let to_string (err : t) : string =
+    match err with
+    | Parse e ->
+      Printf.sprintf "parse error: %s" (CF.Pp_errors.to_string (e.loc, e.cause))
+    | Preprocess e ->
+      Printf.sprintf
+        "preprocessing file %s failed with exit code %i - see logs"
+        (Uri.to_string e.uri)
+        e.result.exit_code
+    | Process e ->
+      Printf.sprintf
+        "error in subprocess: %s: %s(%s)"
+        (Unix.error_message e.code)
+        e.fn
+        e.param
+  ;;
+end
+
+let read_process (cmd : string) (args : string array) : (proc_out, Error.t) Result.t =
   try
     let out_read, out_write = Unix.pipe () in
     Unix.set_close_on_exec out_read;
@@ -102,31 +136,39 @@ let read_process (cmd : string) (args : string array) : (proc_out, string) Resul
     | _, WEXITED exit_code | _, WSIGNALED exit_code | _, WSTOPPED exit_code ->
       Ok { exit_code; stdout = out; stderr = err }
   with
-  | Unix.Unix_error (err, fn, _param) -> Error (Unix.error_message err ^ ": " ^ fn)
+  | Unix.Unix_error (code, fn, param) -> Error (Process { code; fn; param })
 ;;
 
-let preprocess_file (uri : Uri.t) : (proc_out, string) Result.t =
+let preprocess_file (uri : Uri.t) : (proc_out, Error.t) Result.t =
+  let ( let* ) x f = Result.bind x ~f in
   let path = Uri.to_path uri in
   let args = Array.of_list (c_preprocessor_arguments @ [ path ]) in
-  read_process c_preprocessor args
+  let* result = read_process c_preprocessor args in
+  match result.exit_code with
+  | 0 -> Ok result
+  | code ->
+    Log.e (Printf.sprintf "preprocessing failed with exit code %i" code);
+    Log.e "stdout:";
+    List.iter (String.split_lines result.stdout) ~f:(fun line -> Log.e ("  " ^ line));
+    Log.e "stderr:";
+    List.iter (String.split_lines result.stderr) ~f:(fun line -> Log.e ("  " ^ line));
+    Error (Preprocess { uri; result })
 ;;
 
 let parse_document_source (uri : Uri.t) (source : string)
-  : (Cabs.external_declaration list, string) Result.t
+  : (Cabs.external_declaration list, Error.t) Result.t
   =
   let () = CF.Switches.set [ "inner_arg_temps"; "at_magic_comments" ] in
   let path = Uri.to_path uri in
   match C_parser_driver.parse_from_string ~filename:path source with
   | CF.Exception.Result (TUnit decls) -> Ok decls
-  | CF.Exception.Exception (loc, cause) -> Error (CF.Pp_errors.to_string (loc, cause))
+  | CF.Exception.Exception (loc, cause) -> Error (Parse { loc; cause })
 ;;
 
-let parse_document_file (uri : Uri.t) : (Cabs.external_declaration list, string) Result.t =
+let parse_document_file (uri : Uri.t) : (Cabs.external_declaration list, Error.t) Result.t
+  =
   match preprocess_file uri with
-  | Ok out ->
-    Log.d (Printf.sprintf "cpp exit code: %i" out.exit_code);
-    Log.d (Printf.sprintf "cpp stderr: \n%s" out.stderr);
-    parse_document_source uri out.stdout
+  | Ok out -> parse_document_source uri out.stdout
   | Error s -> Error s
 ;;
 
