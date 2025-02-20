@@ -31,11 +31,6 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
 
-      - name: Link lockfiles
-        run: |
-          ln -s telemetry.opam.locked-${{ matrix.ocaml-version }} telemetry.opam.locked
-          ln -s cn-lsp.opam.locked-${{ matrix.ocaml-version }} cn-lsp.opam.locked
-
       - name: Install dependencies
         run: opam install . --deps-only --locked -y
 
