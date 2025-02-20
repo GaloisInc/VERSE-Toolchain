@@ -37,9 +37,8 @@ let mk_verify_lens (fundef : Cabs.function_definition) : (CodeLens.t, Error.t) R
     Error (FunctionLocation { fn = procedure_name; loc = Parse.function_loc fundef })
   | Some range ->
     let arguments = [ `String procedure_name; Range.to_yojson range ] in
-    let command =
-      Command.create ~command:"CN.runOnFunction" ~title:"Verify with CN" ~arguments ()
-    in
+    let title = Printf.sprintf "Verify %s with CN" procedure_name in
+    let command = Command.create ~command:"CN.runOnFunction" ~title ~arguments () in
     Ok (CodeLens.create ~command ~range ())
 ;;
 
