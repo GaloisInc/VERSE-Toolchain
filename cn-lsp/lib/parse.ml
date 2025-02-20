@@ -116,6 +116,10 @@ module Error = struct
   ;;
 end
 
+(** Run the command [cmd] with arguments [args] and wait for it to finish. Note
+    that, like [Unix.create_process], the first argument ([args.(0)]) should
+    be "the filename of the program being executed". In most cases, this means
+    it should be [cmd]. *)
 let read_process (cmd : string) (args : string array) : (proc_out, Error.t) Result.t =
   try
     let out_read, out_write = Unix.pipe () in
@@ -142,7 +146,7 @@ let read_process (cmd : string) (args : string array) : (proc_out, Error.t) Resu
 let preprocess_file (uri : Uri.t) : (proc_out, Error.t) Result.t =
   let ( let* ) x f = Result.bind x ~f in
   let path = Uri.to_path uri in
-  let args = Array.of_list (c_preprocessor_arguments @ [ path ]) in
+  let args = Array.of_list ((c_preprocessor :: c_preprocessor_arguments) @ [ path ]) in
   let* result = read_process c_preprocessor args in
   match result.exit_code with
   | 0 -> Ok result
