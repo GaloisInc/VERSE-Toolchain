@@ -1,10 +1,10 @@
 # CN Telemetry: Setup Guide
-*SamC, MikeD, ColeS - 2025-02-17*
+*SamC, MikeD, ColeS - 2025-02-21*
 
 Telemetry collection for CN works through the VERSE VS Code plugin. Here’s how
 to get everything installed and set up. I’m assuming you’re in a working
-directory `TELEMETRY` (for me, `/Users/miked/VERSE-Telemetry`), and that you
-have already installed VS Code.  
+directory `TELEMETRY` (for example, `/Users/miked/VERSE-Telemetry`), and that you
+have already installed VS Code (available [here](https://code.visualstudio.com)).
 
 **Note:** CN’s telemetry will only record invocations of CN made through the VS
 Code plugin (not through shell commands, for example). 
@@ -93,7 +93,7 @@ int add(int x, int y)
 ```
 
 Copy this code into a file. VS Code should add syntax highlighting to the CN
-annotations - the part inside ‘magic comments’, `/*@ … @*/`. You should also see
+annotations - the part inside ‘magic comments’, `/*@ ... @*/`. You should also see
 a button above the `add()` function that says ‘Verify with CN’. When you click
 on it, CN runs and verifies that the contract holds. Nice\! This also has the
 effect of generating telemetry data. 
