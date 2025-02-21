@@ -19,7 +19,7 @@ jobs:
       matrix:
         node-version: [21.7.3]
         ocaml-version: [5.1.1]
-        os: [ubuntu-22.04]
+        os: [ubuntu-22.04, macos-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -73,6 +73,6 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: cn-client
+          name: cn-client-${{ matrix.os }}
           # This will only match one file
           path: cn-client/cn-client-*.vsix
