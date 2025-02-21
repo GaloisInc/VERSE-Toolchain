@@ -39,7 +39,8 @@ side of the editor, or View-\>Extensions in the menu).
 To install the CN LSP server and telemetry collection tool, follow the
 instructions [here](https://github.com/GaloisInc/VERSE-Toolchain/blob/main/README.md#installation-and-use). 
 
-Here’s what I’d expect to see (assuming you’ve installed OCaml and opam): 
+Here’s what I’d expect to see (assuming you’ve already installed z3, OCaml, and
+opam): 
 
 ```sh
 $ cd $TELEMETRY/VERSE-Toolchain   # go to root of VERSE-Toolchain repository
