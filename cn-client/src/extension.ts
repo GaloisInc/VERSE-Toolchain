@@ -93,6 +93,8 @@ async function runCN(functionName?: string, functionRange?: ct.Range) {
         fnRange: functionRange
     };
 
+    await vsc.workspace.save(activeEditor.document.uri);
+
     client.sendRequest(req, params);
 }
 
