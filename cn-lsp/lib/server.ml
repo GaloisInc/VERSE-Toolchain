@@ -65,6 +65,14 @@ class lsp_server (env : Verify.cerb_env) =
     val env : Verify.cerb_env = env
     val mutable server_config : ServerConfig.t = ServerConfig.default
     val mutable telemetry_storage : Storage.t option = None
+
+    (** Documents with unsaved, in-buffer modifications are added to this set to
+        prevent mislocated lenses from appearing for them. They're removed
+        from this set when they're saved. This is a stopgap measure while
+        we're not tracking document changes enough to know where to publish
+        lenses for unsaved documents - see #158 and #160. *)
+    val hide_lenses : Uri.t Hash_set.t = Hash_set.create (module Uri)
+
     inherit Rpc.server
 
     (* Required *)
@@ -95,6 +103,16 @@ class lsp_server (env : Verify.cerb_env) =
       ~old_content:(_ : string)
       ~new_content:(_ : string)
       : unit IO.t =
+      let req = SReq.CodeLensRefresh in
+      let handle (response : (unit, Jsonrpc.Response.Error.t) Result.t) : unit IO.t =
+        Result.iter_error response ~f:(fun e ->
+          Log.e
+            ("codeLensRefresh: client responded with error: "
+             ^ Json.to_string (Jsonrpc.Response.Error.yojson_of_t e)));
+        IO.return ()
+      in
+      Hash_set.add hide_lenses doc.uri;
+      let _id = notify_back#send_request req handle in
       self#clear_diagnostics_for notify_back doc.uri
 
     (* Required *)
@@ -115,6 +133,7 @@ class lsp_server (env : Verify.cerb_env) =
       (params : DidSaveTextDocumentParams.t)
       : unit IO.t =
       let open IO in
+      Hash_set.remove hide_lenses params.textDocument.uri;
       if server_config.run_CN_on_save
       then self#run_cn notify_back params.textDocument.uri ~fn:None ~fn_range:None
       else return ()
@@ -177,16 +196,19 @@ class lsp_server (env : Verify.cerb_env) =
       (_ : Rpc.doc_state)
       : CodeLens.t list IO.t =
       let open IO in
-      match Lenses.lenses_for uri with
-      | [], [] ->
-        Log.d (sprintf "no lenses for %s" (Uri.to_string uri));
-        IO.return []
-      | lenses, [] -> IO.return lenses
-      | lenses, errors ->
-        List.iter errors ~f:(fun e ->
-          Log.e (sprintf "lens: %s" (Lenses.Error.to_string e)));
-        let* () = cwarn notify_back "Errors in code lens creation - see logs" in
-        IO.return lenses
+      if Hash_set.mem hide_lenses uri
+      then IO.return []
+      else (
+        match Lenses.lenses_for uri with
+        | [], [] ->
+          Log.d (sprintf "no lenses for %s" (Uri.to_string uri));
+          IO.return []
+        | lenses, [] -> IO.return lenses
+        | lenses, errors ->
+          List.iter errors ~f:(fun e ->
+            Log.e (sprintf "lens: %s" (Lenses.Error.to_string e)));
+          let* () = cwarn notify_back "Errors in code lens creation - see logs" in
+          IO.return lenses)
 
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
