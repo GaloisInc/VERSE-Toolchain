@@ -10,7 +10,7 @@ let client: ct.LanguageClient;
 type Maybe<T> = T | undefined;
 
 export async function activate(context: vsc.ExtensionContext): Promise<void> {
-    let serverContext = getConfiguredServerContext();
+    let serverContext = getConfiguredServerContext(context);
 
     if (serverContext === undefined) {
         serverContext = await newServerContext(context);
@@ -185,7 +185,7 @@ async function newServerContext(
     return undefined;
 }
 
-function getConfiguredServerContext(): Maybe<ServerContext> {
+function getConfiguredServerContext(context: vsc.ExtensionContext): Maybe<ServerContext> {
     let conf = vsc.workspace.getConfiguration("CN");
     let serverPath: Maybe<string> = conf.get("serverPath");
     let cerbRuntime: Maybe<string> = conf.get("cerbRuntime");
@@ -198,11 +198,25 @@ function getConfiguredServerContext(): Maybe<ServerContext> {
         serverPath !== "" &&
         cerbRuntime !== null &&
         cerbRuntime !== undefined &&
-        cerbRuntime !== ""
+        cerbRuntime !== "" && 
+        fs.existsSync(serverPath) &&
+        fs.existsSync(cerbRuntime)
     ) {
         return { serverPath, cerbRuntime };
     } else {
-        return undefined;
+        const bundledServer = vsc.Uri.joinPath(context.extensionUri, "cn-lsp-server");
+        const bundledRuntime = vsc.Uri.joinPath(context.extensionUri, "cerb-runtime");
+        if (
+            fs.existsSync(bundledServer.path) &&
+            fs.existsSync(bundledRuntime.path)
+        ) {
+            return {
+                serverPath: bundledServer.path,
+                cerbRuntime: bundledRuntime.path,
+            };
+        } else {
+            return undefined;
+        }
     }
 }
 
