@@ -90,12 +90,24 @@ async function runCN(functionName?: string, functionRange?: ct.Range) {
     const params: VerifyParams = {
         uri: activeEditor.document.uri.toString(),
         fn: functionName,
-        fnRange: functionRange
+        fnRange: functionRange,
     };
 
-    await vsc.workspace.save(activeEditor.document.uri);
+    let conf = vsc.workspace.getConfiguration("CN");
+    let runOnSave: Maybe<boolean> = conf.get("runOnSave");
 
-    client.sendRequest(req, params);
+    if (functionName) {
+        // The only way for this to trigger is if a user clicked a per-function
+        // code lens, and we happen to know that the server doesn't publish
+        // those lenses on anything but a just-saved file (see #167), so we
+        // don't need to save it ourselves here
+        client.sendRequest(req, params);
+    } else {
+        await vsc.workspace.save(activeEditor.document.uri);
+        if (runOnSave === undefined || runOnSave === false) {
+            client.sendRequest(req, params);
+        }
+    }
 }
 
 // This schema is meant to match the one defined by `cn-lsp`'s
