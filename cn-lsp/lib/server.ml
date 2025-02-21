@@ -60,6 +60,19 @@ module VerifyParams = struct
   [@@deriving yojson]
 end
 
+let request_code_lens_refresh (notify_back : Rpc.notify_back) : unit IO.t =
+  let req = SReq.CodeLensRefresh in
+  let handle (response : (unit, Jsonrpc.Response.Error.t) Result.t) : unit IO.t =
+    Result.iter_error response ~f:(fun e ->
+      Log.e
+        ("codeLensRefresh: client responded with error: "
+         ^ Json.to_string (Jsonrpc.Response.Error.yojson_of_t e)));
+    IO.return ()
+  in
+  let _id = notify_back#send_request req handle in
+  IO.return ()
+;;
+
 class lsp_server (env : Verify.cerb_env) =
   object (self)
     val env : Verify.cerb_env = env
@@ -103,16 +116,9 @@ class lsp_server (env : Verify.cerb_env) =
       ~old_content:(_ : string)
       ~new_content:(_ : string)
       : unit IO.t =
-      let req = SReq.CodeLensRefresh in
-      let handle (response : (unit, Jsonrpc.Response.Error.t) Result.t) : unit IO.t =
-        Result.iter_error response ~f:(fun e ->
-          Log.e
-            ("codeLensRefresh: client responded with error: "
-             ^ Json.to_string (Jsonrpc.Response.Error.yojson_of_t e)));
-        IO.return ()
-      in
+      let open IO in
       Hash_set.add hide_lenses doc.uri;
-      let _id = notify_back#send_request req handle in
+      let* () = request_code_lens_refresh notify_back in
       self#clear_diagnostics_for notify_back doc.uri
 
     (* Required *)
@@ -134,6 +140,10 @@ class lsp_server (env : Verify.cerb_env) =
       : unit IO.t =
       let open IO in
       Hash_set.remove hide_lenses params.textDocument.uri;
+      (* Once a document is saved, it's ready to get lenses. In practice, a
+         (VSCode) client seems to request new lenses automatically on document
+         save, but it's easy enough to ensure it does. *)
+      let* () = request_code_lens_refresh notify_back in
       if server_config.run_CN_on_save
       then self#run_cn notify_back params.textDocument.uri ~fn:None ~fn_range:None
       else return ()
