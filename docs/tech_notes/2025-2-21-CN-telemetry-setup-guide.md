@@ -94,7 +94,7 @@ int add(int x, int y)
 
 Copy this code into a file. VS Code should add syntax highlighting to the CN
 annotations - the part inside ‘magic comments’, `/*@ ... @*/`. You should also see
-a button above the `add()` function that says ‘Verify with CN’. When you click
+a button above the `add()` function that says ‘Verify add with CN’. When you click
 on it, CN runs and verifies that the contract holds. Nice\! This also has the
 effect of generating telemetry data. 
 
@@ -113,7 +113,7 @@ You can find the tutorials
 [here](https://rems-project.github.io/cn-tutorial/getting-started/tutorials/). 
 
 **Note:** The tutorial doesn’t refer to the IDE, but rather the command-line
-tool. In order to collect telemetry, please always run CN by clicking ‘Verify
+tool. In order to collect telemetry, please always run CN by clicking ‘Verify _
 with CN’ in the editor. 
 
 ## *Step 8:* Upload your telemetry
