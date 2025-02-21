@@ -114,7 +114,8 @@ You can find the tutorials
 
 **Note:** The tutorial doesn’t refer to the IDE, but rather the command-line
 tool. In order to collect telemetry, please always run CN by clicking ‘Verify _
-with CN’ in the editor. 
+with CN’ in the editor. If you don't see this button above a function, save the
+file containing that function. This should cause the lens to (re)appear.
 
 ## *Step 8:* Upload your telemetry
 
