@@ -99,6 +99,9 @@ a button above the `add()` function that says ‘Verify add with CN’. When you
 on it, CN runs and verifies that the contract holds. Nice\! This also has the
 effect of generating telemetry data. 
 
+**Note:** The ‘Verify _ with CN’ button will only appear *after* you have 
+saved the file to disk. 
+
 Now look in the directory `<TELEMETRY>/CN-telemetry-data`. You should see a
 file, `profile.json`, and one or more directories, `session-<some date>`. You
 can look in the directory to check whether the telemetry data is being
