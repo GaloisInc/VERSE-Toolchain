@@ -19,7 +19,7 @@ jobs:
       matrix:
         node-version: [21.7.3]
         ocaml-version: [5.1.1]
-        os: [ubuntu-22.04, macos-latest]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-latest]
 
     runs-on: ${{ matrix.os }}
 
