@@ -1,0 +1,79 @@
+name: CN LSP CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Cancel in-progress job when a new push is performed
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        node-version: [21.7.3]
+        ocaml-version: [5.1.1]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Build server
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-version }}
+
+      - name: Install dependencies
+        run: opam install . --deps-only --locked -y
+
+      - name: Build
+        run: eval $(opam env) && dune build
+
+      - name: Run tests
+        run: eval $(opam env) && dune test
+
+      # Build client
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install client dependencies
+        working-directory: ./cn-client
+        run: npm install
+
+      - name: Build client
+        working-directory: ./cn-client
+        run: npm run compile
+
+      # Distribute client
+
+      - name: Install server
+        run: eval $(opam env) && dune install
+
+      - name: Compile client .vsix
+        working-directory: ./cn-client
+        run: |
+          cp ../_opam/bin/cn-lsp-server cn-lsp-server
+          cp -r ../_opam/lib/cerberus/runtime cerb-runtime
+          npm run dist
+
+      - name: Upload artifacts
+        if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cn-client-${{ matrix.os }}
+          # This will only match one file
+          path: cn-client/cn-client-*.vsix
