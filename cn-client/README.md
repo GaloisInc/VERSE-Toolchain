@@ -11,6 +11,14 @@ VSCode window rooted in this directory. From a terminal in that window:
 
 # Installing
 
+## Installing a Release
+
+See the [top-level README](../README.md) for instructions on installing the CN
+client from a pre-built release.
+
+
+## Building from Source
+
 To install this extension in VSCode persistently, you can run the following from
 a command line at this directory:
 - `npm install`
