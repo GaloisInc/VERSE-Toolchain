@@ -18,10 +18,15 @@ $ git clone https://github.com/GaloisInc/VERSE-Toolchain.git
 ## *Step 2:* Install the CN LSP client 
 
 The CN LSP server client provides syntax highlighting for CN and interacts with
-the CN tool and telemetry collection infrastructure. To install it, follow the
-instructions [here](https://github.com/GaloisInc/VERSE-Toolchain/blob/main/cn-client/README.md#installing). 
+the CN tool and telemetry collection infrastructure. To install it, either from
+a pre-built release or from source, follow the instructions
+[here](https://github.com/GaloisInc/VERSE-Toolchain/blob/main/cn-client/README.md#installing). 
 
-Here’s what I’d expect to see: 
+Installing the client from a release is quicker and easier, but experimental. If
+you install the client this way, you do not need to install the server - the
+released client includes a pre-built server.
+
+If you build and install the client from source, here's what I'd expect to see:
 
 ```sh
 $ cd $TELEMETRY/VERSE-Toolchain/cn-client   # go to cn-client directory 
@@ -36,11 +41,15 @@ side of the editor, or View-\>Extensions in the menu).
 
 ## *Step 3:* Install the CN LSP server and telemetry collection 
 
-To install the CN LSP server and telemetry collection tool, follow the
-instructions [here](https://github.com/GaloisInc/VERSE-Toolchain/blob/main/README.md#installation-and-use). 
+If you installed the client from a release, skip to step 4.
 
-Here’s what I’d expect to see (assuming you’ve already installed z3, OCaml, and
-opam): 
+If you built the client from source, you'll need to build and install the server
+from source as well. To install the CN LSP server and telemetry collection tool,
+follow the instructions
+[here](https://github.com/GaloisInc/VERSE-Toolchain/blob/main/README.md#installation-and-use).
+
+If you build and install the server from source, here's what I'd expect to see
+(assuming you've already installed z3, OCaml, and opam): 
 
 ```sh
 $ cd $TELEMETRY/VERSE-Toolchain   # go to root of VERSE-Toolchain repository
