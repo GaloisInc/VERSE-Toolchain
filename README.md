@@ -51,14 +51,40 @@ TBD: Links to project pages, more details as we discover them.
 
 ## Installation and Use
 
+Below are instructions for installing the VSCode integrations available for CN.
+Note that these integrations rely on
+[z3](https://github.com/Z3Prover/z3/releases) being installed and available on
+your `$PATH`; install it via your preferred package manager.
+
+### Installing a Release
+
+Note: this method of installation is **experimental**. If you encounter issues
+with it, please report them, and in the meantime use the below instructions on
+building from source as a fallback.
+
+We aim to build and package our VSCode integrations for multiple operating
+systems through this repo's CI and to make them available periodically as
+["Releases"](https://github.com/GaloisInc/VERSE-Toolchain/releases). To install
+these integrations from a release:
+- Download and unzip the release associated with your OS, or the OS nearest
+  yours, to produce a `cn-client-X.Y.Z.vsix` file.
+- Run `code --install-extension /path/to/cn-client-X.Y.Z.vsix`.
+- If you last installed this extension by building it from source, open this
+  extension's settings in VSCode and delete any configured "Server Path" and
+  "Cerb Runtime" entries. (Otherwise, the client will not pick up the server
+  binary and runtime files included in the CI-built release.) You don't need to
+  add new entries; the client will do this automatically when you restart
+  VSCode.
+- Restart VSCode.
+
+
+### Building from Source
+
 Begin by installing OCaml and opam, if need be - here are
 [instructions](https://ocaml.org/docs/installing-ocaml) for how to do so. This
 build process relies on using a local opam switch based on OCaml 5.1.1. (Prior
 versions of the server supported earlier versions of OCaml, but the current one
 does not.)
-
-The server also requires that [z3](https://github.com/Z3Prover/z3/releases) be
-installed and available on your `$PATH`. 
 
 (Note: this server has not been regularly built or tested on Windows; these
 instructions assume you're using Linux or macOS.)
