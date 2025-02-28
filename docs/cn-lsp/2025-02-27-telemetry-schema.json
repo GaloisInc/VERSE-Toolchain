@@ -1,0 +1,270 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema#",
+    "title": "CN Language Server Telemetry",
+    "type": "object",
+    "properties": {
+        "time": {
+            "description": "Timestamp of an event, in seconds since epoch",
+            "type": "number"
+        },
+        "event_data": {
+            "description": "Data associated with an event",
+            "type": "object",
+            "properties": {
+                "event_result": {
+                    "description": "Outcome of event, if any",
+                    "anyOf": [
+                        {
+                            "description": "The event had no meaningful outcome",
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "prefixItems": [
+                                {
+                                    "description": "The event succeeded",
+                                    "const": "Success"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "prefixItems": [
+                                {
+                                    "description": "The event failed",
+                                    "const": "Failure"
+                                },
+                                {
+                                    "description": "Why the event failed",
+                                    "type": "object",
+                                    "properties": {
+                                        "causes": {
+                                            "description": "Available causes of failure",
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "causes"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "event_type": {
+                    "description": "Type of event",
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "prefixItems": [
+                                {
+                                    "description": "The server started running",
+                                    "const": "ServerStart"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "prefixItems": [
+                                {
+                                    "description": "The server stopped running",
+                                    "const": "ServerStop"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "prefixItems": [
+                                {
+                                    "description": "Verification began",
+                                    "const": "BeginVerify"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "file": {
+                                            "description": "Path of file being verified",
+                                            "type": "string"
+                                        },
+                                        "fn_name": {
+                                            "description": "Name of individual function being verified (if applicable)",
+                                            "anyOf": [
+                                                {
+                                                    "description": "Verification was initiated on the entire file",
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "description": "Verification was initiated on this function",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        },
+                                        "fn_body": {
+                                            "description": "Body and specification of individual function being verified (if applicable)",
+                                            "anyOf": [
+                                                {
+                                                    "description": "Verification was initiated on the entire file",
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "description": "Verification was initiated on this function",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "file",
+                                        "fn_name",
+                                        "fn_body"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "prefixItems": [
+                                {
+                                    "description": "Verification ended",
+                                    "const": "EndVerify"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "file": {
+                                            "description": "Path of file being verified",
+                                            "type": "string"
+                                        },
+                                        "fn_name": {
+                                            "description": "Name of individual function being verified (if applicable)",
+                                            "anyOf": [
+                                                {
+                                                    "description": "Verification was of the entire file",
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "description": "Verification was of this function",
+                                                    "type": "string"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "file",
+                                        "fn_name"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "prefixItems": [
+                                {
+                                    "description": "A file was opened",
+                                    "const": "OpenFile"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "file": {
+                                            "description": "Path of opened file",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "file"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "prefixItems": [
+                                {
+                                    "description": "A file was opened",
+                                    "const": "CloseFile"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "file": {
+                                            "description": "Path of closed file",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "file"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "prefixItems": [
+                                {
+                                    "description": "Configuration changed",
+                                    "const": "ChangeConfiguration"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "cfg": {
+                                            "type": "object",
+                                            "properties": {
+                                                "runOnSave": {
+                                                    "description": "Whether to run CN when a file is saved",
+                                                    "type": "boolean"
+                                                },
+                                                "telemetryDir": {
+                                                    "description": "Where to save telemetry files",
+                                                    "type": "string"
+                                                },
+                                                "userID": {
+                                                    "description": "User identifier",
+                                                    "anyOf": [
+                                                        {
+                                                            "description": "The user provided no identifier",
+                                                            "type": "null"
+                                                        },
+                                                        {
+                                                            "description": "The user provided this identifier",
+                                                            "type": "string"
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "runOnSave",
+                                                "telemetryDir",
+                                                "userID"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "event_result",
+                "event_type"
+            ],
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "time",
+        "event_data"
+    ],
+    "additionalProperties": false
+}
