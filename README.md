@@ -53,8 +53,10 @@ TBD: Links to project pages, more details as we discover them.
 
 Below are instructions for installing the VSCode integrations available for CN.
 Note that these integrations rely on
-[z3](https://github.com/Z3Prover/z3/releases) and [gmp](https://gmplib.org/) being installed and available on
-your `$PATH`; install it via your preferred package manager. For example, for MacOS we recommend running `brew install z3 gmp`.
+[z3](https://github.com/Z3Prover/z3/releases) and [gmp](https://gmplib.org/)
+being installed and available on your `$PATH`; install them via your preferred
+package manager. For example, for macOS we recommend running `brew install z3
+gmp`.
 
 ### Installing a Release
 
