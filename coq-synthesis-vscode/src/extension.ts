@@ -257,7 +257,7 @@ export function activate(context: vscode.ExtensionContext) {
             console.log('done', exitCode);
             if (exitCode != 0) {
                 vscode.window.showErrorMessage(
-                    'Proof synthesis failed: exit code = ' + exitCode);
+                    'Proof synthesis finished: exit code = ' + exitCode);
                 return;
             }
 
@@ -320,7 +320,7 @@ export function activate(context: vscode.ExtensionContext) {
             // current proof.  This happens only if the synthesis succeeded.
             if (resultProof['status'] != 'SUCCESS') {
                 vscode.window.showErrorMessage(
-                    'Proof synthesis failed: status = ' + resultProof['status']);
+                    'Proof synthesis finished: status = ' + resultProof['status']);
                 return;
             }
 
