@@ -53,8 +53,10 @@ TBD: Links to project pages, more details as we discover them.
 
 Below are instructions for installing the VSCode integrations available for CN.
 Note that these integrations rely on
-[z3](https://github.com/Z3Prover/z3/releases) and [gmp](https://gmplib.org/) being installed and available on
-your `$PATH`; install it via your preferred package manager. For example, for MacOS we recommend running `brew install z3 gmp`.
+[z3](https://github.com/Z3Prover/z3/releases) and [gmp](https://gmplib.org/)
+being installed and available on your `$PATH`; install them via your preferred
+package manager. For example, for macOS we recommend running `brew install z3
+gmp`.
 
 ### Installing a Release
 
@@ -76,6 +78,8 @@ these integrations from a release:
   add new entries; the client will do this automatically when you restart
   VSCode.
 - Restart VSCode.
+
+Now, if you open a C file in VSCode, you should be able to use CN features.
 
 
 ### Building from Source
@@ -110,11 +114,15 @@ dune install
 If this command succeeds, it should install the `cn-lsp` and `telemetry`
 packages into your local switch.
 
-The `cn-lsp` package includes a binary called `cn-lsp-server`. Any language
-clients should run the binary from there. If a client is run outside the context
-of your local switch, it may also need to set `$CERB_RUNTIME` to point to
-Cerberus's runtime file dependencies, which will have been installed in the
-switch at `<opam-dir>/lib/cerberus/runtime`.
+Now that you've installed the language _server_, you'll also need to install a
+language _client_, if you haven't already. For instructions on how to build and
+install our language client for VSCode, see
+[cn-client/README.md](cn-client/README.md). This step isn't required when
+installing a release because the server and client are packaged together in the
+release, and both are installed at once.
+
+Once you've done that, if you open a C file in VSCode, you should be able to use
+CN features.
 
 
 ### How to run CN
