@@ -1,17 +1,18 @@
-# MKM Demo -- plan 
+# MKM Demo
 2025-03-14
 
-- [MKM Demo -- plan](#mkm-demo----plan)
+- [MKM Demo](#mkm-demo)
   - [1 - MKM Purpose](#1---mkm-purpose)
   - [2 - MKM High Level Protocol](#2---mkm-high-level-protocol)
-  - [3 - MKM Requirements](#3---mkm-requirements)
-  - [3 - MKM State Machine](#3---mkm-state-machine)
-  - [4 - MKM Protocol Encoded as a CN Predicate](#4---mkm-protocol-encoded-as-a-cn-predicate)
-  - [5 - CN Predicate as part of a function contract](#5---cn-predicate-as-part-of-a-function-contract)
-  - [6 - Testing the MKM State Machine](#6---testing-the-mkm-state-machine)
-  - [7 - Introducing a Synthetic Bug](#7---introducing-a-synthetic-bug)
-  - [8 - Walking Through `client_event()`](#8---walking-through-client_event)
-  - [9 - An Example Sub-function - `client_read()`](#9---an-example-sub-function---client_read)
+  - [3 - MKM Requirements In Detail](#3---mkm-requirements-in-detail)
+  - [4 - MKM State Machine](#4---mkm-state-machine)
+  - [5 - MKM Protocol Encoded as a CN Predicate](#5---mkm-protocol-encoded-as-a-cn-predicate)
+  - [6 - CN Predicate as part of a function contract](#6---cn-predicate-as-part-of-a-function-contract)
+  - [7 - Testing the MKM State Machine](#7---testing-the-mkm-state-machine)
+  - [8 - Introducing a Synthetic Bug](#8---introducing-a-synthetic-bug)
+  - [9 - Walking Through `client_event()`](#9---walking-through-client_event)
+  - [10 - An Example Sub-function - `client_read()`](#10---an-example-sub-function---client_read)
+
 
 
 ## 1 - MKM Purpose 
@@ -24,7 +25,8 @@
 (from [here](https://github.com/GaloisInc/VERSE-OpenSUT/tree/main/components/mission_key_management#mission-key-management-server))
 
 
-## 2 - MKM High Level Protocol
+
+## 2 - MKM High Level Protocol 
 
 > The protocol that components use to communicate with the MKM works as follows:
 > 
@@ -42,7 +44,12 @@
 
 (from [here](https://github.com/GaloisInc/VERSE-OpenSUT/tree/main/components/mission_key_management#protocol))
 
-## 3 - MKM Requirements
+We also have other requirements for the MKM component, including the requirement
+that the component is *memory-safe / free of undefined behavior*. 
+
+
+
+## 3 - MKM Requirements In Detail 
 
 Below are high-level requirements for the MKM:
 
@@ -74,7 +81,9 @@ Below are high-level requirements for the MKM:
 
 (from [here](https://github.com/GaloisInc/VERSE-OpenSUT/blob/prelease-v1.0/components/mission_key_management/README.md#requirements))
 
-## 3 - MKM State Machine 
+
+
+## 4 - MKM State Machine 
 
 We can realize the protocol as a simple state machine: 
 
@@ -105,11 +114,10 @@ In a real engineering environment, we would expect a requirements engineer to
 perform this translation. 
 
 
-## 4 - MKM Protocol Encoded as a CN Predicate 
 
-We can quite easily express this property as a CN predicate. If we wrote the
-state machine in a formal language, rather than a diagram, we could even extract
-it directly to this representation. 
+## 5 - MKM Protocol Encoded as a CN Predicate 
+
+We can quite easily express this property as a CN predicate (from `client.h`, line 153):
 
 ```C
 function (boolean) ValidTransition (u32 state1, u32 state2) {
@@ -126,8 +134,12 @@ function (boolean) ValidTransition (u32 state1, u32 state2) {
 }
 ``` 
 
+If we wrote the state machine in a formal language, rather than a diagram, we
+could even extract it directly to this representation. 
 
-## 5 - CN Predicate as part of a function contract
+
+
+## 6 - CN Predicate as part of a function contract
 
 The main event handler for MKM is the `client_event()` function. It is a
 requirement of the MKM module that this function to respects the structure of the
@@ -185,12 +197,26 @@ predicate (struct client) ClientObject (pointer p)
 ``` 
 
 
-## 6 - Testing the MKM State Machine 
+
+## 7 - Testing the MKM State Machine 
+
+We have all the ingredients we need to test the function contract: 
+
+```C
+enum client_event_result client_event(struct client* c, uint32_t events) 
+/*$
+requires 
+    take Client_in = ClientObject(c); 
+ensures 
+    take Client_out = ClientObject(c); 
+    ValidTransition(Client_in.state, Client_out.state); 
+$*/
+``` 
 
 Once we have set up the predicates appropriately, we can test them: 
 
 ```sh 
-cn test client.c 
+cn test client.c  # not quite ... 
 ``` 
 
 Actually it's quite a bit more complicated than just this, for two reasons: 
@@ -205,16 +231,23 @@ Instead, we can just call:
 make cn_test
 ``` 
 
-This calls 1000 randomized tests on each function in the file. 
+This calls 1000 randomized tests on each function in the file. This involves 
+synthesizing valid instances of the `struct client` type in memory, and 
+checking the code steps to a valid state machine state, as well as preserving
+memory safety / ownership. 
 
-Likewise, if we want to prove the code correct, intuitively we just call the
-following: 
+Testing has several advantages over verification: 
+
+- We don't need to write loop invariants and internal annotations 
+- We always get concrete counter-examples if we fail 
+
+If we do want to prove the code correct, intuitively we just call the following: 
 
 ```sh
-cn verify client.c
+cn verify client.c  # not quite ... 
 ```
 
-But for the same reasons as above, actually, we have a Makefile that does this
+But for the same reasons as above, actually we have a Makefile that does this
 for us: 
 
 ```sh 
@@ -222,31 +255,11 @@ make cn_proof
 ``` 
 
 
-## 7 - Introducing a Synthetic Bug 
+## 8 - Introducing a Synthetic Bug 
 
-We can show that verification is enforcing correct behavior by introducing a synthetic
-bug into the state machine. 
+We can introduce a bug into the CN code and show that we can detect it: 
 
-```C
-/*$
-function (boolean) ValidTransition (u32 state1, u32 state2) {
-       ( state1 == state2 ) 
-    || ( (state1 == (u32) CS_RECV_KEY_ID)    && (state2 == (u32) CS_SEND_CHALLENGE) )
-    || ( (state1 == (u32) CS_SEND_CHALLENGE) && (state2 == (u32) CS_RECV_RESPONSE)  )
-    || ( (state1 == (u32) CS_RECV_RESPONSE)  && (state2 == (u32) CS_SEND_KEY)       )
-    || ( ValidState(state1)                  && (state2 == (u32) CS_SEND_KEY)       )
-    //                                                           ~~~~~~~~~~~
-    //                                        Should be CS_DONE ------^
-}
-$*/
-```
-
-We can also show that randomized testing will detect this same bug. This is
-very nice - it means that abstract properties of the state machine are enforced
-in the code by run-time tests. 
-
-We can likewise introduce a bug into the CN code and show that we can detect it: 
-
+(`client.c` line 411)
 ```C 
         case CS_RECV_KEY_ID: { // NOTE additional block needed for declaration 
             memcpy(c->challenge, "random challenge", NONCE_SIZE);
@@ -256,15 +269,41 @@ We can likewise introduce a bug into the CN code and show that we can detect it:
             break; } 
 ``` 
 
-## 8 - Walking Through `client_event()`
+We can show that randomized testing will detect this same bug. This is
+very nice - it means that abstract properties of the state machine are enforced
+in the code by run-time tests. 
+
+We can also show that verification is enforcing correct behavior by introducing a synthetic
+bug into the state machine. 
+
+(`client.h` line 153)
+```C
+/*$
+function (boolean) ValidTransition (u32 state1, u32 state2) {
+       ( state1 == state2 ) 
+    || ( (state1 == (u32) CS_RECV_KEY_ID)    && (state2 == (u32) CS_RECV_RESPONSE) )
+    //                                                           ~~~~~~~~~~~~~~~~
+    //                             Should be CS_SEND_CHALLENGE ------^
+    || ( (state1 == (u32) CS_SEND_CHALLENGE) && (state2 == (u32) CS_RECV_RESPONSE)  )
+    || ( (state1 == (u32) CS_RECV_RESPONSE)  && (state2 == (u32) CS_SEND_KEY)       )
+    || ( ValidState(state1)                  && (state2 == (u32) CS_DONE)           )
+}
+$*/
+```
+
+
+## 9 - Walking Through `client_event()`
 
 Some properties to note in `client_event()`: 
 * Changing the state actually relies on a sub-function, `client_change_state()`.
 * It calls several sub-functions which may modify the client object, and the
   reasoning has to account for such modifications. For example, `client_read()`. 
+* The state machine code is quite simple, and all of the read/write logic
+  actually occurs in `client_write()` and `client_read()`.
 
 
-## 9 - An Example Sub-function - `client_read()`
+
+## 10 - An Example Sub-function - `client_read()`
 
 The purpose of `client_read()` is to read from a file descriptor into one of 
 the buffers that MKM is managing. This has the following signature and contract:
@@ -283,3 +322,9 @@ ensures
     Client_out.state == Client_in.state; 
 $*/
 ```
+
+The logic in this function is a bit complex: 
+
+- Get a pointer to the buffer that should be accessed - `client_read_buffer()`
+- Get the size of the buffer - `client_buffer_size()`
+- Use both values to access the buffer 
