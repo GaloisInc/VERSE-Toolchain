@@ -250,6 +250,15 @@ export function activate(context: vscode.ExtensionContext) {
                     '--no-generate-report',
                     '--no-resume',
                     '--auto-search-prefix',
+                    // QEDCartographer-specific options:
+                    '--search-type', 'astar',
+                    '--max-steps', '500',
+                    // QEDCartographer estimator options.  These can be omitted
+                    // to use the default estimator instead, in which case the
+                    // pickled estimator file is not needed.
+                    '--scoring-function', 'pickled',
+                    '--pickled-estimator',
+                        proverbotDir + '/data/coqgym_filtered_curriculum_pickled.pkl',
                 ],
                 'cwd': parentDir,
                 'env': extraEnv,
