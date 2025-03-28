@@ -171,7 +171,7 @@ export function activate(context: vscode.ExtensionContext) {
                     'The `proverbot9001.path` setting must be set before using this command.');
                 return;
             }
-            let pythonExe = config.get('proverbot9001.pythonInterpreter');
+            let pythonExe: string = config.get('proverbot9001.pythonInterpreter') ?? "";
             if (pythonExe == '') {
                 pythonExe = path.join(proverbotDir, 'venv/bin/python3');
             }
@@ -242,7 +242,7 @@ export function activate(context: vscode.ExtensionContext) {
                 'message': 'Running proof search...\r\n',
                 'shellPath': wrapperScript,
                 'shellArgs': [
-                    proverbotDir + '/venv/bin/python3',
+                    pythonExe,
                     proverbotDir + '/src/search_file.py',
                     '--weightsfile', proverbotDir + '/data/polyarg-weights.dat',
                     tempFilePath,
