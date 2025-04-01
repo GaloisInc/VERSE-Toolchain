@@ -386,6 +386,10 @@ function renderTree(treeData) {
         var newHeight = d3.max(levelWidth) * 25; // 25 pixels per line  
         tree = tree.size([newHeight, viewerWidth]);
 
+        var div = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
+
         // Compute the new tree layout.
         var nodes = tree.nodes(root).reverse(),
             links = tree.links(nodes);
@@ -414,11 +418,109 @@ function renderTree(treeData) {
             })
             .on('click', click);
 
+        function getProofScript(d, tail) {
+            var scriptTail = d.name + "\n" + tail;
+            var parent = d.parent;
+            if (parent) {
+                if (parent.name === "Proof.") {
+                    return "Proof.\n" + scriptTail;
+                }
+                return getProofScript(parent, scriptTail);
+            }
+            return scriptTail;
+        }
+
+        function stylizeCoqString(str) {
+            // Stylizing match statements
+            // newline before match or end keywords
+            str = str.replace(/\bmatch\b/g, ' </br> match');
+            str = str.replace(/\bend\b/g, ' </br> end');
+            // newline and some space before each case
+            str = str.replace(/\|/g, '</br>&nbsp;&nbsp;  |');
+            return str;
+        }
+        
         nodeEnter.append("circle")
             .attr('class', 'nodeCircle')
             .attr("r", 0)
             .style("fill", function(d) {
                 return d._children ? "lightsteelblue" : "#fff";
+            })
+
+            // On mouseover, show the formatted proof context and 
+            // proof goal before the given tactic
+            .on('mouseover', function (d, i) {
+
+                // don't show state if root
+                if (d == root) return;
+
+                d3.select(this).transition()
+                    .duration(50)
+                    .attr('opacity', '.85');
+            
+                div.transition()
+                    .duration(50)
+                    .style("opacity", .9);
+            
+                var stylizedCtx = Array.from(d.proofcontext)
+                var stylizedCtxStr = stylizedCtx.reverse().join('</br></br>')
+                stylizedCtxStr = stylizeCoqString(stylizedCtxStr)
+
+                var stylizedGoal = stylizeCoqString(d.proofgoal)
+
+                // Display the formatted information
+                div.html(`${stylizedCtxStr}<br/>_____________________________________________<br/><br/>${stylizedGoal}`)
+                    .style("left", (d3.event.pageX) + "px")
+                    .style("top", (d3.event.pageY - 28) + "px")
+                    .style("background-color", "rgba(0, 0, 0, 0.8)") // Dark background with opacity
+                    .style("color", "#FFFFFF") // White text
+                    .style("padding", "5px") // Add some padding for readability
+                    .style("border-radius", "5px") // Optional: Add rounded corners
+                    .style("width", "250px")
+                    .style("font-size", "10px")
+                    .style("text-align", "left");
+            })
+
+            .on('mouseout', function (d, i) {
+                d3.select(this).transition()
+                    .duration(50)
+                    .attr('opacity', '1');
+            
+                div.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+            })
+            
+
+            .on('contextmenu', function(d, i){
+                d3.event.preventDefault();
+
+                // collect proof script up to node
+                var script = getProofScript(d, "");
+                
+                // copy the proof script to clipboard
+                navigator.clipboard.writeText(script);
+
+                // give a notification of script copied successfully
+                var notification = d3.select("body")
+                    .append("div")
+                    .style("position", "absolute")
+                    .style("left", `${d3.event.pageX}px`)
+                    .style("top", `${d3.event.pageY}px`)
+                    .style("background", "white")
+                    .style("color", "black")
+                    .style("padding", "8px")
+                    .style("border-radius", "5px")
+                    .style("border", "1px solid black")
+                    .style("opacity", 1)
+                    .style("pointer-events", "none") 
+                    .text("Proof script copied to clipboard!");
+
+                // fade out and remove after 2 seconds
+                notification.transition()
+                    .duration(2000)
+                    .style("opacity", 0)
+                    .on("end", function() { notification.remove(); });
             });
 
         nodeEnter.append("text")
@@ -554,4 +656,16 @@ function renderTree(treeData) {
     // Layout the tree initially and center on the root node.
     update(root);
     centerNode(root);
+
+    // Add listener for dynamic panel re-sizing 
+    window.addEventListener('resize', function() {
+        // retrieve new width and height after re-sizing
+        viewerWidth = $(window).width();
+        viewerHeight = $(window).height();
+        
+        // update the attributes
+        d3.select("svg")
+            .attr("width", viewerWidth)
+            .attr("height", viewerHeight);
+    });
 }
