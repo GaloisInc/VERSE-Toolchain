@@ -11,7 +11,7 @@ module Diagnostic = Lsp.Types.Diagnostic
 let loc_to_source_range (loc : Cerb_location.t) : (string * Range.t) option =
   let path_opt =
     match Cn.Locations.start_pos loc, Cn.Locations.end_pos loc with
-    | Some pos, _ | _, Some pos -> Some pos.pos_fname
+    | Some pos, _ | _, Some pos -> Some (Cerb_position.file pos)
     | _ -> None
   in
   let range_opt = Range.of_cerb_loc loc in
@@ -81,15 +81,15 @@ let setup () : env m =
   in
   let* stdlib = CB.Pipeline.load_core_stdlib () in
   let* impl = CB.Pipeline.load_core_impl stdlib Cn.Setup.impl_name in
-  let conf = Cn.Setup.conf macros incl_dirs incl_files astprints in
+  let cpp_location_info_file = None in
+  let conf = Cn.Setup.conf macros incl_dirs incl_files astprints cpp_location_info_file in
   return (conf, impl, stdlib)
 ;;
 
 let frontend ((conf, impl, stdlib) : env) (filename : string) =
   let cn_init_scope : CF.Cn_desugaring.init_scope =
     { predicates = [ Cn.Alloc.Predicate.(str, sym, Some loc) ]
-    ; functions =
-        List.map Cn.Builtins.cn_builtin_fun_names ~f:(fun (str, sym) -> str, sym, None)
+    ; functions = List.map Cn.Builtins.fun_names ~f:(fun (str, sym) -> str, sym, None)
     ; idents = [ Cn.Alloc.History.(str, sym, None) ]
     }
   in

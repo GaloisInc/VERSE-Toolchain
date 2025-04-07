@@ -17,7 +17,7 @@ let ( |--| ) ((l1, c1) : int * int) ((l2, c2) : int * int) : t =
 ;;
 
 let of_cerb_loc (loc : Cerb_location.t) : t option =
-  match Cerb_location.to_cartesian loc with
+  match Cerb_location.to_cartesian_user loc with
   | None -> None
   | Some ((l1, c1), (l2, c2)) ->
     let start = Position.create ~line:l1 ~character:c1 in

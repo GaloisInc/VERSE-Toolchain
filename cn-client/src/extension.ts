@@ -155,7 +155,7 @@ async function newServerContext(
             }
 
             let serverPath = path.join(opamDir, "bin", "cn-lsp-server");
-            let cerbRuntime = path.join(opamDir, "lib", "cerberus", "runtime");
+            let cerbRuntime = path.join(opamDir, "lib", "cerberus-lib", "runtime");
 
             if (fs.existsSync(serverPath) && fs.existsSync(cerbRuntime)) {
                 return {

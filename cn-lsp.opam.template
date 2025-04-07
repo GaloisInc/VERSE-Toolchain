@@ -1,14 +1,10 @@
 pin-depends: [
   [
-    "cerberus.d7d4e67"
-    "git+https://github.com/rems-project/cerberus.git#d7d4e67"
+    "cerberus-lib.ef237b3"
+    "git+https://github.com/rems-project/cerberus.git#ef237b3"
   ]
   [
-    "cerberus-lib.d7d4e67"
-    "git+https://github.com/rems-project/cerberus.git#d7d4e67"
-  ]
-  [
-    "cn.d7d4e67"
-    "git+https://github.com/rems-project/cerberus.git#d7d4e67"
+    "cn.bf9f700"
+    "git+https://github.com/rems-project/cn.git#bf9f700"
   ]
 ]

@@ -67,7 +67,7 @@ jobs:
         working-directory: ./cn-client
         run: |
           cp ../_opam/bin/cn-lsp-server cn-lsp-server
-          cp -r ../_opam/lib/cerberus/runtime cerb-runtime
+          cp -r ../_opam/lib/cerberus-lib/runtime cerb-runtime
           npm run dist
 
       - name: Upload artifacts
