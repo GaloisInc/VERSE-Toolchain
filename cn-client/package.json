@@ -43,6 +43,11 @@
                     "default": null,
                     "description": "Location of Cerberus runtime files"
                 },
+                "CN.reportDir": {
+                    "type": "string",
+                    "default": null,
+                    "description": "Where to save any CN-generated error reports"
+                },
                 "CN.runOnSave": {
                     "type": "boolean",
                     "default": false,
