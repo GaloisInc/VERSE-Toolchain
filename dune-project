@@ -24,12 +24,10 @@
    (and
     (>= v0.16.3)
     (< v0.18)))
-  (cerberus
-   (= "d7d4e67"))
   (cerberus-lib
-   (= "d7d4e67"))
+   (= "ef237b3"))
   (cn
-   (= "d7d4e67"))
+   (= "bf9f700"))
   (jsonrpc
    (and
     (>= 1.17.0)
