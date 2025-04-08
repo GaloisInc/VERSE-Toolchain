@@ -39,7 +39,7 @@ See [Tyche](https://github.com/tyche-pbt/tyche-extension) and QuickChick ([manua
 
 ### Proof Synthesis, Repair and Visualization
 
-CN provides an escape hatch to Roq (formerly Coq) to provide manual proofs of properties that cannot be automatically verified.
+CN provides an escape hatch to [Rocq](https://rocq-prover.org) (formerly Coq) to provide manual proofs of properties that cannot be automatically verified.
 
 - **Proof synthesis** attempts to automatically discharge these proof obligations.
 - **Proof repair** attempts to automatically fix existing proofs if the code
