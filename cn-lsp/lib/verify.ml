@@ -12,19 +12,45 @@ module Error = struct
     | CnError e -> LspCn.Error.to_string e
   ;;
 
-  (** Convert an error to an LSP diagnostic and the URI to which it applies *)
-  let to_diagnostic (err : t) : (Uri.t * Diagnostic.t) option =
+  (** Convert an error to an LSP diagnostic and the URI to which it applies.
+
+      If [html_report_dir] is provided, try to generate an HTML-formatted report
+      of the error, store it in that directory, and include a link to it in the
+      diagnostic. *)
+  let to_diagnostic (err : t) ~(html_report_dir : string option)
+    : (Uri.t * Diagnostic.t) option
+    =
     match err with
     | CerbError (loc, cause) -> LspCerb.Error.to_diagnostic (loc, cause)
-    | CnError e -> LspCn.Error.to_diagnostic e
+    | CnError e ->
+      let html_report =
+        match html_report_dir with
+        | None -> None
+        | Some output_dir ->
+          (match LspCn.Error.to_html_report e ~fn_name:None ~output_dir with
+           | None ->
+             Log.d
+               (Printf.sprintf
+                  "to_diagnostic: unable to generate HTML report for CN error: %s"
+                  (LspCn.Error.to_string e));
+             None
+           | Some report -> Some report)
+      in
+      LspCn.Error.to_diagnostic e ~html_report
   ;;
 
   (** Convert many CN errors to many LSP diagnostics, indexed by the URIs in
-      which they apply *)
-  let to_diagnostics (errs : t list) : (Uri.t, Diagnostic.t list) Hashtbl.t =
+      which they apply.
+
+      If [html_report_dir] is provided, try to generate HTML-formatted reports
+      of each error, store them in that directory, and include links to each in
+      their respective diagnostics. *)
+  let to_diagnostics (errs : t list) ~(html_report_dir : string option)
+    : (Uri.t, Diagnostic.t list) Hashtbl.t
+    =
     let diags = Hashtbl.create (module Uri) in
     let add err =
-      match to_diagnostic err with
+      match to_diagnostic err ~html_report_dir with
       | None ->
         Log.e
           (Printf.sprintf "to_diagnostics: unable to interpret error: %s" (to_string err))

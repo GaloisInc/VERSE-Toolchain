@@ -398,7 +398,10 @@ class lsp_server (env : Verify.cerb_env) =
         | _ ->
           let causes = List.map errors ~f:Verify.Error.to_string in
           self#record_telemetry (end_event (Failure { causes }));
-          let diagnostics = Hashtbl.to_alist (Verify.Error.to_diagnostics errors) in
+          let diagnostics =
+            Hashtbl.to_alist
+              (Verify.Error.to_diagnostics errors ~html_report_dir:report_storage_dir)
+          in
           let* () = Lwt.pause () in
           self#publish_all notify_back diagnostics
       in
