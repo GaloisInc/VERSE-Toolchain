@@ -227,11 +227,12 @@ class lsp_server (env : Verify.cerb_env) =
       then IO.return []
       else (
         match Lenses.lenses_for uri with
-        | [], [] ->
+        | Error _parse_error -> failwith "unimplemented"
+        | Ok ([], []) ->
           Log.d (sprintf "no lenses for %s" (Uri.to_string uri));
           IO.return []
-        | lenses, [] -> IO.return lenses
-        | lenses, errors ->
+        | Ok (lenses, []) -> IO.return lenses
+        | Ok (lenses, errors) ->
           List.iter errors ~f:(fun e ->
             Log.e (sprintf "lens: %s" (Lenses.Error.to_string e)));
           let* () = cwarn notify_back "Errors in code lens creation - see logs" in
