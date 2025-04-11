@@ -6,7 +6,6 @@ module Cabs = Cerb_frontend.Cabs
 
 module Error = struct
   type t =
-    | Parse of Parse.Error.t
     | FunctionLocation of
         { fn : string
         ; loc : Cerb_location.t
@@ -14,7 +13,6 @@ module Error = struct
 
   let to_string (err : t) : string =
     match err with
-    | Parse e -> Printf.sprintf "parse error: %s" (Parse.Error.to_string e)
     | FunctionLocation e ->
       let buf = Buffer.create 1024 in
       let loc = Cerb_location.print_location e.loc in
@@ -42,10 +40,10 @@ let mk_verify_lens (fundef : Cabs.function_definition) : (CodeLens.t, Error.t) R
     Ok (CodeLens.create ~command ~range ())
 ;;
 
-let lenses_for (uri : Uri.t) : CodeLens.t list * Error.t list =
+let lenses_for (uri : Uri.t) : (CodeLens.t list * Error.t list, Parse.Error.t) Result.t =
   match Parse.parse_document_file uri with
-  | Error e -> [], [ Error.Parse e ]
+  | Error e -> Error e
   | Ok decls ->
     let fns = Parse.function_declarations decls ~only_from:(Some uri) in
-    List.partition_result (List.map fns ~f:mk_verify_lens)
+    Ok (List.partition_result (List.map fns ~f:mk_verify_lens))
 ;;
