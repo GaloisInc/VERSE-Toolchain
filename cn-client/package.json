@@ -6,7 +6,7 @@
         "url": "https://github.com/GaloisInc/VERSE-Toolchain",
         "type": "git"
     },
-    "version": "0.1.0",
+    "version": "0.1.1",
     "engines": {
         "vscode": "^1.75.0"
     },
@@ -42,6 +42,11 @@
                     "type": "string",
                     "default": null,
                     "description": "Location of Cerberus runtime files"
+                },
+                "CN.reportDir": {
+                    "type": "string",
+                    "default": null,
+                    "description": "Where to save any CN-generated error reports"
                 },
                 "CN.runOnSave": {
                     "type": "boolean",

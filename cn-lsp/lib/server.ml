@@ -76,6 +76,7 @@ let request_code_lens_refresh (notify_back : Rpc.notify_back) : unit IO.t =
 class lsp_server (env : Verify.cerb_env) =
   object (self)
     val env : Verify.cerb_env = env
+    val mutable report_storage_dir : string option = None
     val mutable server_config : ServerConfig.t = ServerConfig.default
     val mutable telemetry_storage : Storage.t option = None
 
@@ -155,6 +156,14 @@ class lsp_server (env : Verify.cerb_env) =
       (match server_config.telemetry_dir with
        | None -> ()
        | Some dir -> self#initialize_telemetry dir);
+      report_storage_dir
+      <- Some
+           (match server_config.report_dir with
+            | None -> Stdlib.Filename.get_temp_dir_name ()
+            | Some dir ->
+              let expanded = Filename_extended.expand dir in
+              Path.mkdir_p expanded;
+              expanded);
       let event_data () = EventData.{ event_type = ServerStart; event_result = None } in
       self#record_telemetry event_data;
       let* () = self#register_did_change_configuration notify_back in
@@ -176,6 +185,14 @@ class lsp_server (env : Verify.cerb_env) =
            let old_telemetry_dir = server_config.telemetry_dir in
            server_config <- cfg;
            let new_telemetry_dir = server_config.telemetry_dir in
+           report_storage_dir
+           <- Some
+                (match server_config.report_dir with
+                 | None -> Stdlib.Filename.get_temp_dir_name ()
+                 | Some dir ->
+                   let expanded = Filename_extended.expand dir in
+                   Path.mkdir_p expanded;
+                   expanded);
            let change_event () =
              EventData.
                { event_type = ChangeConfiguration { cfg }; event_result = Some Success }
@@ -381,7 +398,10 @@ class lsp_server (env : Verify.cerb_env) =
         | _ ->
           let causes = List.map errors ~f:Verify.Error.to_string in
           self#record_telemetry (end_event (Failure { causes }));
-          let diagnostics = Hashtbl.to_alist (Verify.Error.to_diagnostics errors) in
+          let diagnostics =
+            Hashtbl.to_alist
+              (Verify.Error.to_diagnostics errors ~html_report_dir:report_storage_dir)
+          in
           let* () = Lwt.pause () in
           self#publish_all notify_back diagnostics
       in

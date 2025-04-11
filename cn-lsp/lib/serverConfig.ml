@@ -2,7 +2,8 @@ open! Base
 
 (** The client controls these options, and sends them at a server's request *)
 type t =
-  { run_CN_on_save : bool [@key "runOnSave"]
+  { report_dir : string option [@key "reportDir"]
+  ; run_CN_on_save : bool [@key "runOnSave"]
   ; telemetry_dir : string option [@default None] [@key "telemetryDir"]
   ; user_id : string option [@default None] [@key "userID"]
   }
@@ -17,4 +18,6 @@ type t =
     CN-specific settings *)
 let section : string = "CN"
 
-let default : t = { run_CN_on_save = false; telemetry_dir = None; user_id = None }
+let default : t =
+  { report_dir = None; run_CN_on_save = false; telemetry_dir = None; user_id = None }
+;;
