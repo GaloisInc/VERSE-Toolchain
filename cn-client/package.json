@@ -27,12 +27,12 @@
     "contributes": {
         "commands": [
             {
-                "command": "CN.runOnFile",
-                "title": "CN: Run CN on the current file"
+                "command": "CN.verifyFile",
+                "title": "CN: Use CN to verify all functions in the current file"
             },
             {
-                "command": "CN.runOnFunction",
-                "title": "CN: Run CN on the specified function"
+                "command": "CN.verifyFunction",
+                "title": "CN: Use CN to verify the specified function"
             }
         ],
         "configuration": {
@@ -43,10 +43,10 @@
                     "default": null,
                     "description": "Where to save any CN-generated error reports"
                 },
-                "CN.runOnSave": {
+                "CN.verifyFileOnSave": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Run CN whenever a file is saved"
+                    "description": "Verify a file with CN whenever it's saved"
                 },
                 "CN.runtimeDir": {
                     "type": "string",

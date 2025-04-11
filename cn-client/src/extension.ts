@@ -63,14 +63,14 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
         clientOptions
     );
 
-    vsc.commands.registerCommand("CN.runOnFile", () => {
-        runCN();
+    vsc.commands.registerCommand("CN.verifyFile", () => {
+        cnVerify();
     });
 
     vsc.commands.registerCommand(
-        "CN.runOnFunction",
+        "CN.verifyFunction",
         (functionName: string, functionRange: ct.Range) => {
-            runCN(functionName, functionRange);
+            cnVerify(functionName, functionRange);
         }
     );
 
@@ -78,8 +78,8 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
     console.log("started client");
 }
 
-async function runCN(functionName?: string, functionRange?: ct.Range) {
-    const req = new ct.RequestType("$/runCN");
+async function cnVerify(functionName?: string, functionRange?: ct.Range) {
+    const req = new ct.RequestType("$/cnVerify");
 
     const activeEditor = vsc.window.activeTextEditor;
     if (activeEditor === undefined) {
@@ -94,7 +94,7 @@ async function runCN(functionName?: string, functionRange?: ct.Range) {
     };
 
     let conf = vsc.workspace.getConfiguration("CN");
-    let runOnSave: Maybe<boolean> = conf.get("runOnSave");
+    let verifyFileOnSave: Maybe<boolean> = conf.get("verifyFileOnSave");
 
     if (functionName) {
         // The only way for this to trigger is if a user clicked a per-function
@@ -104,7 +104,7 @@ async function runCN(functionName?: string, functionRange?: ct.Range) {
         client.sendRequest(req, params);
     } else {
         await vsc.workspace.save(activeEditor.document.uri);
-        if (runOnSave === undefined || runOnSave === false) {
+        if (verifyFileOnSave === undefined || verifyFileOnSave === false) {
             client.sendRequest(req, params);
         }
     }

@@ -3,9 +3,9 @@ open! Base
 (** The client controls these options, and sends them at a server's request *)
 type t =
   { report_dir : string option [@key "reportDir"]
-  ; run_CN_on_save : bool [@key "runOnSave"]
   ; telemetry_dir : string option [@default None] [@key "telemetryDir"]
   ; user_id : string option [@default None] [@key "userID"]
+  ; verify_file_on_save : bool [@key "verifyFileOnSave"]
   }
 [@@deriving eq, show, yojson { strict = false }]
 
@@ -19,5 +19,5 @@ type t =
 let section : string = "CN"
 
 let default : t =
-  { report_dir = None; run_CN_on_save = false; telemetry_dir = None; user_id = None }
+  { report_dir = None; telemetry_dir = None; user_id = None; verify_file_on_save = false }
 ;;
