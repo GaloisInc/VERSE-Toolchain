@@ -98,6 +98,12 @@ module Error = struct
         ; param : string
         }
 
+  let to_diagnostic (err : t) : (Uri.t * Lsp.Types.Diagnostic.t) option =
+    match err with
+    | Preprocess { uri = _; result = _ } | Process { code = _; fn = _; param = _ } -> None
+    | Parse { loc; cause } -> LspCerb.Error.to_diagnostic (loc, cause)
+  ;;
+
   let to_string (err : t) : string =
     match err with
     | Parse e ->

@@ -227,7 +227,16 @@ class lsp_server (env : Verify.cerb_env) =
       then IO.return []
       else (
         match Lenses.lenses_for uri with
-        | Error _parse_error -> failwith "unimplemented"
+        | Error parse_error ->
+          (match Parse.Error.to_diagnostic parse_error with
+           | None ->
+             Log.e (sprintf "on_req_code_lens: %s" (Parse.Error.to_string parse_error));
+             return []
+           | Some (diagnostic_uri, diagnostic) ->
+             let* () =
+               self#publish_diagnostics_for notify_back diagnostic_uri [ diagnostic ]
+             in
+             return [])
         | Ok ([], []) ->
           Log.d (sprintf "no lenses for %s" (Uri.to_string uri));
           IO.return []
