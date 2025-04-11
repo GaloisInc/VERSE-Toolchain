@@ -42,10 +42,6 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
   cwindow MessageType.Info notify msg
 ;;
 
-let cwarn (notify : Rpc.notify_back) (msg : string) : unit IO.t =
-  cwindow MessageType.Warning notify msg
-;;
-
 let sprintf = Printf.sprintf
 
 module VerifyParams = struct
@@ -237,15 +233,10 @@ class lsp_server (env : Verify.cerb_env) =
                self#publish_diagnostics_for notify_back diagnostic_uri [ diagnostic ]
              in
              return [])
-        | Ok ([], []) ->
-          Log.d (sprintf "no lenses for %s" (Uri.to_string uri));
-          IO.return []
-        | Ok (lenses, []) -> IO.return lenses
         | Ok (lenses, errors) ->
           List.iter errors ~f:(fun e ->
-            Log.e (sprintf "lens: %s" (Lenses.Error.to_string e)));
-          let* () = cwarn notify_back "Errors in code lens creation - see logs" in
-          IO.return lenses)
+            Log.e (sprintf "on_req_code_lens: %s" (Lenses.Error.to_string e)));
+          return lenses)
 
     method on_unknown_request
       ~(notify_back : Rpc.notify_back)
