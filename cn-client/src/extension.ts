@@ -25,7 +25,7 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
 
     let env = process.env;
     if (serverContext.cerbRuntime !== undefined) {
-        env.CERB_RUNTIME = serverContext.cerbRuntime;
+        env.CERB_INSTALL_PREFIX = serverContext.cerbRuntime;
     } else {
         // TODO: we already tried to get ahold of the runtime when we generated
         // or retrieved in a server configuration, should we try again?
