@@ -60,8 +60,8 @@ let check_preprocess () =
       [ "int foo() {"; "  int x = 42;"; "  int y = x;"; "  return x + y;"; "}" ]
       ~sep:"\n"
   in
-  match Cnlsp.Parse.read_process "cc" [| "cc"; "-E"; Cnlsp.Uri.to_path file |] with
-  | Error e -> failwith ("failed to preprocess: " ^ Cnlsp.Parse.Error.to_string e)
+  match Cnlsp.Process.read_process "cc" [| "cc"; "-E"; Cnlsp.Uri.to_path file |] with
+  | Error e -> failwith ("failed to preprocess: " ^ Cnlsp.Process.Error.to_string e)
   | Ok out ->
     Alcotest.(check int) "exit code zero" 0 out.exit_code;
     let stdout_lines = String.split_lines out.stdout in
