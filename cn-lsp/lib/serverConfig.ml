@@ -3,6 +3,7 @@ open! Base
 (** The client controls these options, and sends them at a server's request *)
 type t =
   { report_dir : string option [@key "reportDir"]
+  ; runtime_dir : string option [@key "runtimeDir"]
   ; telemetry_dir : string option [@default None] [@key "telemetryDir"]
   ; user_id : string option [@default None] [@key "userID"]
   ; verify_file_on_save : bool [@key "verifyFileOnSave"]
@@ -19,5 +20,10 @@ type t =
 let section : string = "CN"
 
 let default : t =
-  { report_dir = None; telemetry_dir = None; user_id = None; verify_file_on_save = false }
+  { report_dir = None
+  ; runtime_dir = None
+  ; telemetry_dir = None
+  ; user_id = None
+  ; verify_file_on_save = false
+  }
 ;;
