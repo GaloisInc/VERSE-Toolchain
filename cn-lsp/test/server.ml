@@ -46,6 +46,34 @@ module TestServer = struct
   ;;
 
   (** Read the next message available from the server and interpret it as a
+      [Jsonrpc.Notification.t] *)
+  let read_notification (server : t) : Jsonrpc.Notification.t Lwt.t =
+    let* packet = read_packet server in
+    match packet with
+    | Notification n -> Lwt.return n
+    | _ ->
+      failwith
+        (Printf.sprintf
+           "Expected notification, but saw %s: %s"
+           (packet_tag packet)
+           (Yojson.Safe.to_string (Jsonrpc.Packet.yojson_of_t packet)))
+  ;;
+
+  (** Read the next message available from the server and interpret it as a
+      [Jsonrpc.Request.t] *)
+  let read_request (server : t) : Jsonrpc.Request.t Lwt.t =
+    let* packet = read_packet server in
+    match packet with
+    | Request r -> Lwt.return r
+    | _ ->
+      failwith
+        (Printf.sprintf
+           "Expected request, but saw %s: %s"
+           (packet_tag packet)
+           (Yojson.Safe.to_string (Jsonrpc.Packet.yojson_of_t packet)))
+  ;;
+
+  (** Read the next message available from the server and interpret it as a
       [Jsonrpc.Response.t] *)
   let read_response (server : t) : Jsonrpc.Response.t Lwt.t =
     let* packet = read_packet server in
@@ -112,6 +140,64 @@ let test_send_initialize (server : TestServer.t) () : unit Lwt.t =
     Lwt.return ()
 ;;
 
+let test_verify_success (server : TestServer.t) (c_source : string) () : unit Lwt.t =
+  Lwt_io.with_temp_file ~suffix:".c" (fun (filename, oc) ->
+    let* () = Lwt_io.write oc c_source in
+    let uri = Cnlsp.Uri.of_path filename in
+    let params : Cnlsp.Server.VerifyParams.t = { uri; fn = None; fn_range = None } in
+    let request =
+      Jsonrpc.Request.create
+        ~method_:"$/cnVerify"
+        ~id:(`Int 1)
+        ~params:
+          (Jsonrpc.Structured.t_of_yojson (Cnlsp.Server.VerifyParams.to_yojson params))
+        ()
+    in
+    let expect_method ~expected ~actual =
+      if String.equal expected actual
+      then Lwt.return ()
+      else failwith (Printf.sprintf "expected method %s, but saw %s" expected actual)
+    in
+    let* () = TestServer.send_request server request in
+    let* progress_create = TestServer.read_request server in
+    let* () =
+      expect_method
+        ~expected:"window/workDoneProgress/create"
+        ~actual:progress_create.method_
+    in
+    let* progress_begin = TestServer.read_notification server in
+    let* () = expect_method ~expected:"$/progress" ~actual:progress_begin.method_ in
+    let* progress_end = TestServer.read_notification server in
+    let* () = expect_method ~expected:"$/progress" ~actual:progress_end.method_ in
+    let* no_issues = TestServer.read_notification server in
+    let* () = expect_method ~expected:"window/showMessage" ~actual:no_issues.method_ in
+    let show_message_params =
+      Lsp.Types.ShowMessageParams.t_of_yojson
+        (Jsonrpc.Structured.yojson_of_t (Option.value_exn no_issues.params))
+    in
+    if String.is_prefix show_message_params.message ~prefix:"No issues found"
+    then Lwt.return ()
+    else
+      failwith
+        (Printf.sprintf
+           "expected \"No issues found...\" message, but saw \"%s\""
+           show_message_params.message))
+;;
+
+let c_source : string =
+  String.concat
+    ~sep:"\n"
+    [ "int foo()"
+    ; "/*@"
+    ; "requires true;"
+    ; "ensures return == 3i32;"
+    ; "@*/"
+    ; "{"
+    ; "  return 3;"
+    ; "}"
+    ]
+;;
+
 let tests =
   let formatter = Stdlib.Format.formatter_of_out_channel Out_channel.stdout in
   let reporter = Logs.format_reporter ~app:formatter ~dst:formatter () in
@@ -119,5 +205,7 @@ let tests =
   Logs.set_reporter reporter;
   let server = TestServer.create () in
   let tc s nm f = Alcotest_lwt.test_case s nm (fun _switch () -> f ()) in
-  [ tc "initialize" `Quick (test_send_initialize server) ]
+  [ tc "initialize" `Quick (test_send_initialize server)
+  ; tc "verify - succeed" `Quick (test_verify_success server c_source)
+  ]
 ;;
