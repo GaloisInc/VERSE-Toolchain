@@ -96,7 +96,7 @@ let run_cn (cerb_env : cerb_env) (uri : Uri.t) ~(fn : string option) : Error.t l
   (* CLI flag? *)
   let inherit_loc : bool = true in
   let path = Uri.to_path uri in
-  let* prog, (markers_env, ail_prog), _statement_locs =
+  let* _tunit, prog, (markers_env, (_, ail_prog)), _statement_locs =
     lift_cerb (LspCerb.frontend cerb_env path)
   in
   Cn.Check.skip_and_only := [], Option.to_list fn;

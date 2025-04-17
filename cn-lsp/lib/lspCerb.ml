@@ -93,7 +93,7 @@ let frontend ((conf, impl, stdlib) : env) (filename : string) =
     ; idents = [ Cn.Alloc.History.(str, sym, None) ]
     }
   in
-  let* _, ail_prog_opt, prog0 =
+  let* tunit_opt, ail_prog_opt, prog0 =
     CB.Pipeline.c_frontend_and_elaboration
       ~cn_init_scope
       (conf, Cn.Setup.io)
@@ -107,11 +107,12 @@ let frontend ((conf, impl, stdlib) : env) (filename : string) =
       return ()
     else return ()
   in
-  let markers_env, (_, ail_prog) = Option.value_exn ail_prog_opt in
+  let tunit = Option.value_exn tunit_opt in
+  let markers_env, ail_prog = Option.value_exn ail_prog_opt in
   let () = CF.Tags.set_tagDefs prog0.CF.Core.tagDefs in
   let prog1 = CF.Remove_unspecs.rewrite_file prog0 in
   let prog2 = CF.Milicore.core_to_micore__file Cn.Locations.update prog1 in
   let prog3 = CF.Milicore_label_inline.rewrite_file prog2 in
-  let statement_locs = Cn.CStatements.search ail_prog in
-  return (prog3, (markers_env, ail_prog), statement_locs)
+  let statement_locs = Cn.CStatements.search (snd ail_prog) in
+  return (tunit, prog3, (markers_env, ail_prog), statement_locs)
 ;;
