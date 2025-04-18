@@ -6,7 +6,7 @@
         "url": "https://github.com/GaloisInc/VERSE-Toolchain",
         "type": "git"
     },
-    "version": "0.1.2",
+    "version": "0.1.3",
     "engines": {
         "vscode": "^1.75.0"
     },
@@ -38,11 +38,6 @@
         "configuration": {
             "title": "CN",
             "properties": {
-                "CN.cerbRuntime": {
-                    "type": "string",
-                    "default": null,
-                    "description": "Location of Cerberus runtime files"
-                },
                 "CN.reportDir": {
                     "type": "string",
                     "default": null,
@@ -52,6 +47,11 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Run CN whenever a file is saved"
+                },
+                "CN.runtimeDir": {
+                    "type": "string",
+                    "default": null,
+                    "description": "Location of (`opam` or `opam`-like) directory containing Cerberus runtime files"
                 },
                 "CN.serverPath": {
                     "type": "string",

@@ -24,8 +24,8 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
     await setConfiguredServerContext(serverContext);
 
     let env = process.env;
-    if (serverContext.cerbRuntime !== undefined) {
-        env.CERB_INSTALL_PREFIX = serverContext.cerbRuntime;
+    if (serverContext.runtimeDir !== undefined) {
+        env.CERB_INSTALL_PREFIX = serverContext.runtimeDir;
     } else {
         // TODO: we already tried to get ahold of the runtime when we generated
         // or retrieved in a server configuration, should we try again?
@@ -128,7 +128,7 @@ export function deactivate(): Thenable<void> | undefined {
 
 interface ServerContext {
     serverPath: string;
-    cerbRuntime?: string;
+    runtimeDir?: string;
 }
 
 async function newServerContext(
@@ -155,12 +155,12 @@ async function newServerContext(
             }
 
             let serverPath = path.join(opamDir, "bin", "cn-lsp-server");
-            let cerbRuntime = path.join(opamDir, "lib", "cerberus-lib", "runtime");
+            let runtimeDir = opamDir;
 
-            if (fs.existsSync(serverPath) && fs.existsSync(cerbRuntime)) {
+            if (fs.existsSync(serverPath) && fs.existsSync(runtimeDir)) {
                 return {
                     serverPath,
-                    cerbRuntime,
+                    runtimeDir,
                 };
             }
         }
@@ -188,7 +188,7 @@ async function newServerContext(
 function getConfiguredServerContext(context: vsc.ExtensionContext): Maybe<ServerContext> {
     let conf = vsc.workspace.getConfiguration("CN");
     let serverPath: Maybe<string> = conf.get("serverPath");
-    let cerbRuntime: Maybe<string> = conf.get("cerbRuntime");
+    let runtimeDir: Maybe<string> = conf.get("runtimeDir");
 
     // In practice, despite the type annotations, `conf.get` seems capable of
     // returning `null` values, so we need to check them
@@ -196,23 +196,23 @@ function getConfiguredServerContext(context: vsc.ExtensionContext): Maybe<Server
         serverPath !== null &&
         serverPath !== undefined &&
         serverPath !== "" &&
-        cerbRuntime !== null &&
-        cerbRuntime !== undefined &&
-        cerbRuntime !== "" && 
+        runtimeDir !== null &&
+        runtimeDir !== undefined &&
+        runtimeDir !== "" &&
         fs.existsSync(serverPath) &&
-        fs.existsSync(cerbRuntime)
+        fs.existsSync(runtimeDir)
     ) {
-        return { serverPath, cerbRuntime };
+        return { serverPath, runtimeDir };
     } else {
         const bundledServer = vsc.Uri.joinPath(context.extensionUri, "cn-lsp-server");
-        const bundledRuntime = vsc.Uri.joinPath(context.extensionUri, "cerb-runtime");
+        const bundledRuntime = vsc.Uri.joinPath(context.extensionUri, "fake-opam");
         if (
             fs.existsSync(bundledServer.path) &&
             fs.existsSync(bundledRuntime.path)
         ) {
             return {
                 serverPath: bundledServer.path,
-                cerbRuntime: bundledRuntime.path,
+                runtimeDir: bundledRuntime.path,
             };
         } else {
             return undefined;
@@ -223,8 +223,8 @@ function getConfiguredServerContext(context: vsc.ExtensionContext): Maybe<Server
 async function setConfiguredServerContext(serverContext: ServerContext) {
     let conf = vsc.workspace.getConfiguration("CN");
     await conf.update(
-        "cerbRuntime",
-        serverContext.cerbRuntime,
+        "runtimeDir",
+        serverContext.runtimeDir,
         vsc.ConfigurationTarget.Global
     );
     await conf.update(
