@@ -44,6 +44,24 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
 
 let sprintf = Printf.sprintf
 
+module TestGenParams = struct
+  (** The schema the server expects for test generation command ("$/cnTestGen")
+      arguments. Clients must respect this schema when issuing this command. *)
+
+  type t =
+    { uri : Uri.t
+    ; fn : string option [@default None]
+    }
+  [@@deriving yojson]
+end
+
+module TestGenResponse = struct
+  (** The schema the server will use to construct responses to test generation
+      commands ("$/cnTestGen") arguments. *)
+
+  type t = { entrypoint : Uri.t } [@@deriving yojson]
+end
+
 module VerifyParams = struct
   (** The schema the server expects for verification command ("$/cnVerify")
       arguments. Clients must respect this schema when issuing this command. *)

@@ -27,6 +27,10 @@
     "contributes": {
         "commands": [
             {
+                "command": "CN.testFunction",
+                "title": "CN: Use CN to test the specified function"
+            },
+            {
                 "command": "CN.verifyFile",
                 "title": "CN: Use CN to verify all functions in the current file"
             },

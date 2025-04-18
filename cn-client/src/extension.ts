@@ -63,6 +63,10 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
         clientOptions
     );
 
+    vsc.commands.registerCommand("CN.testFunction", (functionName: string) => {
+        cnTest(functionName);
+    });
+
     vsc.commands.registerCommand("CN.verifyFile", () => {
         cnVerify();
     });
@@ -76,6 +80,29 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
 
     client.start();
     console.log("started client");
+}
+
+async function cnTest(functionName?: string) {
+    const req: ct.RequestType<TestGenParams, TestGenResponse, unknown> =
+        new ct.RequestType("$/cnTestGen");
+
+    const activeEditor = vsc.window.activeTextEditor;
+    if (activeEditor === undefined) {
+        vsc.window.showErrorMessage("CN client: no file currently open");
+        return;
+    }
+
+    const params: TestGenParams = {
+        uri: activeEditor.document.uri.toString(),
+        fn: functionName,
+    };
+
+    const response = await client.sendRequest(req, params);
+
+    // TODO: run the entrypoint in a task
+    vsc.window.showInformationMessage(
+        `Test entrypoint: ${response.entrypoint}`
+    );
 }
 
 async function cnVerify(functionName?: string, functionRange?: ct.Range) {
@@ -109,6 +136,19 @@ async function cnVerify(functionName?: string, functionRange?: ct.Range) {
         }
     }
 }
+
+// This schema is meant to match the one defined by `cn-lsp`'s
+// `Server.TestGenParams.t` type.
+type TestGenParams = {
+    uri: ct.DocumentUri;
+    fn?: string;
+};
+
+// This schema is meant to match the one defined by `cn-lsp`'s
+// `Server.TestGenResponse.t` type.
+type TestGenResponse = {
+    entrypoint: ct.DocumentUri;
+};
 
 // This schema is meant to match the one defined by `cn-lsp`'s
 // `Server.VerifyParams.t` type.
