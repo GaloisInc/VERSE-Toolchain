@@ -63,6 +63,10 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
         clientOptions
     );
 
+    vsc.commands.registerCommand("CN.testFile", () => {
+        cnTest();
+    });
+
     vsc.commands.registerCommand("CN.testFunction", (functionName: string) => {
         cnTest(functionName);
     });
