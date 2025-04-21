@@ -98,11 +98,27 @@ async function cnTest(functionName?: string) {
     };
 
     const response = await client.sendRequest(req, params);
+    let entrypointUri = vsc.Uri.parse(response.entrypoint);
 
-    // TODO: run the entrypoint in a task
-    vsc.window.showInformationMessage(
-        `Test entrypoint: ${response.entrypoint}`
+    // Per https://code.visualstudio.com/api/references/contribution-points#contributes.taskDefinitions:
+    // > When the extension actually creates a `Task`, it needs to pass a
+    // > `TaskDefinition` that conforms to the task definition contributed in
+    // > the package.json file.
+    let taskDefinition = { type: "cnTest" };
+    let taskScope = vsc.TaskScope.Workspace;
+    let taskName = "test";
+    let taskSource = "CN";
+    let taskExec = new vsc.ProcessExecution(entrypointUri.path);
+
+    let task = new vsc.Task(
+        taskDefinition,
+        taskScope,
+        taskName,
+        taskSource,
+        taskExec
     );
+
+    await vsc.tasks.executeTask(task);
 }
 
 async function cnVerify(functionName?: string, functionRange?: ct.Range) {

@@ -115,7 +115,12 @@
             "files.associations": {
                 "*.h": "c"
             }
-        }
+        },
+        "taskDefinitions": [
+            {
+                "type": "cnTest"
+            }
+        ]
     },
     "scripts": {
         "compile": "tsc --build",
