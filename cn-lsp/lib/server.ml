@@ -265,6 +265,18 @@ class lsp_server (env : Verify.cerb_env) =
       : Json.t IO.t =
       let open IO in
       match method_name with
+      | "$/cnTestGen" ->
+        (match
+           TestGenParams.of_yojson
+             (Jsonrpc.Structured.yojson_of_t (Option.value_exn params))
+         with
+         | Error s -> failwith ("Failed to decode '$/cnTestGen' parameters: " ^ s)
+         | Ok ps ->
+           (* The URI isn't set automatically on unknown/custom requests *)
+           notify_back#set_uri ps.uri;
+           let* entrypoint = self#cn_gen_tests ps.uri ~fn_name:ps.fn in
+           let response : TestGenResponse.t = { entrypoint } in
+           return (TestGenResponse.to_yojson response))
       | "$/cnVerify" ->
         (match
            VerifyParams.of_yojson
@@ -366,6 +378,23 @@ class lsp_server (env : Verify.cerb_env) =
       in
       let _id = notify_back#send_request (Progress.req_create token) handle in
       return ()
+
+    method cn_gen_tests (uri : Uri.t) ~(fn_name : string option) : Uri.t IO.t =
+      let open IO in
+      match server_config.runtime_dir with
+      | None -> failwith "No runtime specified"
+      | Some runtime_path ->
+        let cn_runtime_path =
+          Filename_base.of_parts [ runtime_path; "lib"; "cn"; "runtime" ]
+        in
+        (match TestGen.generate_tests env uri ~cn_runtime_path ~fn_name with
+         | Ok entrypoint -> return entrypoint
+         | Error err ->
+           (match err with
+            | CompileError _ ->
+              Log.e (TestGen.Error.to_string err);
+              failwith "Failed to compile tests - see logs"
+            | _ -> failwith (TestGen.Error.to_string err)))
 
     method cn_verify
       (notify_back : Rpc.notify_back)
