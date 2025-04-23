@@ -245,7 +245,9 @@ async function newServerContext(
     return undefined;
 }
 
-function getConfiguredServerContext(context: vsc.ExtensionContext): Maybe<ServerContext> {
+function getConfiguredServerContext(
+    context: vsc.ExtensionContext
+): Maybe<ServerContext> {
     let conf = vsc.workspace.getConfiguration("CN");
     let serverPath: Maybe<string> = conf.get("serverPath");
     let runtimeDir: Maybe<string> = conf.get("runtimeDir");
@@ -264,8 +266,14 @@ function getConfiguredServerContext(context: vsc.ExtensionContext): Maybe<Server
     ) {
         return { serverPath, runtimeDir };
     } else {
-        const bundledServer = vsc.Uri.joinPath(context.extensionUri, "cn-lsp-server");
-        const bundledRuntime = vsc.Uri.joinPath(context.extensionUri, "fake-opam");
+        const bundledServer = vsc.Uri.joinPath(
+            context.extensionUri,
+            "cn-lsp-server"
+        );
+        const bundledRuntime = vsc.Uri.joinPath(
+            context.extensionUri,
+            "fake-opam"
+        );
         if (
             fs.existsSync(bundledServer.path) &&
             fs.existsSync(bundledRuntime.path)
