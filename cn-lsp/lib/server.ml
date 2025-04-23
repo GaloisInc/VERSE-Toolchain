@@ -44,8 +44,26 @@ let cinfo (notify : Rpc.notify_back) (msg : string) : unit IO.t =
 
 let sprintf = Printf.sprintf
 
+module TestGenParams = struct
+  (** The schema the server expects for test generation command ("$/cnTestGen")
+      arguments. Clients must respect this schema when issuing this command. *)
+
+  type t =
+    { uri : Uri.t
+    ; fn : string option [@default None]
+    }
+  [@@deriving yojson]
+end
+
+module TestGenResponse = struct
+  (** The schema the server will use to construct responses to test generation
+      commands ("$/cnTestGen") arguments. *)
+
+  type t = { entrypoint : Uri.t } [@@deriving yojson]
+end
+
 module VerifyParams = struct
-  (** The schema the server expects for verification command ("$/runCN")
+  (** The schema the server expects for verification command ("$/cnVerify")
       arguments. Clients must respect this schema when issuing this command. *)
 
   type t =
@@ -141,8 +159,8 @@ class lsp_server (env : Verify.cerb_env) =
          (VSCode) client seems to request new lenses automatically on document
          save, but it's easy enough to ensure it does. *)
       let* () = request_code_lens_refresh notify_back in
-      if server_config.run_CN_on_save
-      then self#run_cn notify_back params.textDocument.uri ~fn:None ~fn_range:None
+      if server_config.verify_file_on_save
+      then self#cn_verify notify_back params.textDocument.uri ~fn:None ~fn_range:None
       else return ()
 
     method on_notif_initialized (notify_back : Rpc.notify_back) : unit IO.t =
@@ -247,16 +265,28 @@ class lsp_server (env : Verify.cerb_env) =
       : Json.t IO.t =
       let open IO in
       match method_name with
-      | "$/runCN" ->
+      | "$/cnTestGen" ->
+        (match
+           TestGenParams.of_yojson
+             (Jsonrpc.Structured.yojson_of_t (Option.value_exn params))
+         with
+         | Error s -> failwith ("Failed to decode '$/cnTestGen' parameters: " ^ s)
+         | Ok ps ->
+           (* The URI isn't set automatically on unknown/custom requests *)
+           notify_back#set_uri ps.uri;
+           let* entrypoint = self#cn_gen_tests ps.uri ~fn_name:ps.fn in
+           let response : TestGenResponse.t = { entrypoint } in
+           return (TestGenResponse.to_yojson response))
+      | "$/cnVerify" ->
         (match
            VerifyParams.of_yojson
              (Jsonrpc.Structured.yojson_of_t (Option.value_exn params))
          with
-         | Error s -> failwith ("Failed to decode '$/runCN' parameters: " ^ s)
+         | Error s -> failwith ("Failed to decode '$/cnVerify' parameters: " ^ s)
          | Ok ps ->
            (* The URI isn't set automatically on unknown/custom requests *)
            let () = notify_back#set_uri ps.uri in
-           let* () = self#run_cn notify_back ps.uri ~fn:ps.fn ~fn_range:ps.fn_range in
+           let* () = self#cn_verify notify_back ps.uri ~fn:ps.fn ~fn_range:ps.fn_range in
            return `Null)
       | _ -> failwith ("Unknown method: " ^ method_name)
 
@@ -349,7 +379,24 @@ class lsp_server (env : Verify.cerb_env) =
       let _id = notify_back#send_request (Progress.req_create token) handle in
       return ()
 
-    method run_cn
+    method cn_gen_tests (uri : Uri.t) ~(fn_name : string option) : Uri.t IO.t =
+      let open IO in
+      match server_config.runtime_dir with
+      | None -> failwith "No runtime specified"
+      | Some runtime_path ->
+        let cn_runtime_path =
+          Filename_base.of_parts [ runtime_path; "lib"; "cn"; "runtime" ]
+        in
+        (match TestGen.generate_tests env uri ~cn_runtime_path ~fn_name with
+         | Ok entrypoint -> return entrypoint
+         | Error err ->
+           (match err with
+            | CompileError _ ->
+              Log.e (TestGen.Error.to_string err);
+              failwith "Failed to compile tests - see logs"
+            | _ -> failwith (TestGen.Error.to_string err)))
+
+    method cn_verify
       (notify_back : Rpc.notify_back)
       (uri : DocumentUri.t)
       ~(fn : string option)

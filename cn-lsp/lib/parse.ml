@@ -76,12 +76,6 @@ let c_preprocessor_arguments : string list =
   ]
 ;;
 
-type proc_out =
-  { exit_code : int
-  ; stdout : string
-  ; stderr : string
-  }
-
 module Error = struct
   type t =
     | Parse of
@@ -90,17 +84,13 @@ module Error = struct
         }
     | Preprocess of
         { uri : Uri.t
-        ; result : proc_out
+        ; result : Process.proc_out
         }
-    | Process of
-        { code : Unix.error
-        ; fn : string
-        ; param : string
-        }
+    | Process of Process.Error.t
 
   let to_diagnostic (err : t) : (Uri.t * Lsp.Types.Diagnostic.t) option =
     match err with
-    | Preprocess { uri = _; result = _ } | Process { code = _; fn = _; param = _ } -> None
+    | Preprocess { uri = _; result = _ } | Process _ -> None
     | Parse { loc; cause } -> LspCerb.Error.to_diagnostic (loc, cause)
   ;;
 
@@ -113,47 +103,18 @@ module Error = struct
         "preprocessing file %s failed with exit code %i - see logs"
         (Uri.to_string e.uri)
         e.result.exit_code
-    | Process e ->
-      Printf.sprintf
-        "error in subprocess: %s: %s(%s)"
-        (Unix.error_message e.code)
-        e.fn
-        e.param
+    | Process e -> Process.Error.to_string e
   ;;
 end
 
-(** Run the command [cmd] with arguments [args] and wait for it to finish. Note
-    that, like [Unix.create_process], the first argument ([args.(0)]) should
-    be "the filename of the program being executed". In most cases, this means
-    it should be [cmd]. *)
-let read_process (cmd : string) (args : string array) : (proc_out, Error.t) Result.t =
-  try
-    let out_read, out_write = Unix.pipe () in
-    Unix.set_close_on_exec out_read;
-    let out_ic = Unix.in_channel_of_descr out_read in
-    let err_read, err_write = Unix.pipe () in
-    Unix.set_close_on_exec err_read;
-    let err_ic = Unix.in_channel_of_descr err_read in
-    let pid = Unix.create_process cmd args Unix.stdin out_write err_write in
-    Unix.close out_write;
-    Unix.close err_write;
-    Stdlib.flush_all ();
-    let out = In_channel.input_all out_ic in
-    Stdlib.close_in out_ic;
-    let err = In_channel.input_all err_ic in
-    Stdlib.close_in err_ic;
-    match Unix.waitpid [] pid with
-    | _, WEXITED exit_code | _, WSIGNALED exit_code | _, WSTOPPED exit_code ->
-      Ok { exit_code; stdout = out; stderr = err }
-  with
-  | Unix.Unix_error (code, fn, param) -> Error (Process { code; fn; param })
-;;
-
-let preprocess_file (uri : Uri.t) : (proc_out, Error.t) Result.t =
+let preprocess_file (uri : Uri.t) : (Process.proc_out, Error.t) Result.t =
   let ( let* ) x f = Result.bind x ~f in
   let path = Uri.to_path uri in
   let args = Array.of_list ((c_preprocessor :: c_preprocessor_arguments) @ [ path ]) in
-  let* result = read_process c_preprocessor args in
+  let* result =
+    Result.map_error (Process.read_process c_preprocessor args) ~f:(fun e ->
+      Error.Process e)
+  in
   match result.exit_code with
   | 0 -> Ok result
   | code ->

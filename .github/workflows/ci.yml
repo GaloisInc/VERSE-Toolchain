@@ -69,6 +69,8 @@ jobs:
           cp ../_opam/bin/cn-lsp-server cn-lsp-server
           mkdir -p fake-opam/lib/cerberus-lib
           cp -r ../_opam/lib/cerberus-lib/runtime ./fake-opam/lib/cerberus-lib/runtime
+          mkdir -p fake-opam/lib/cn
+          cp -r ../_opam/lib/cn/runtime ./fake-opam/lib/cn/runtime
           npm run dist
 
       - name: Upload artifacts

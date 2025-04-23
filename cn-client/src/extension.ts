@@ -63,14 +63,22 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
         clientOptions
     );
 
-    vsc.commands.registerCommand("CN.runOnFile", () => {
-        runCN();
+    vsc.commands.registerCommand("CN.testFile", () => {
+        cnTest();
+    });
+
+    vsc.commands.registerCommand("CN.testFunction", (functionName: string) => {
+        cnTest(functionName);
+    });
+
+    vsc.commands.registerCommand("CN.verifyFile", () => {
+        cnVerify();
     });
 
     vsc.commands.registerCommand(
-        "CN.runOnFunction",
+        "CN.verifyFunction",
         (functionName: string, functionRange: ct.Range) => {
-            runCN(functionName, functionRange);
+            cnVerify(functionName, functionRange);
         }
     );
 
@@ -78,8 +86,47 @@ export async function activate(context: vsc.ExtensionContext): Promise<void> {
     console.log("started client");
 }
 
-async function runCN(functionName?: string, functionRange?: ct.Range) {
-    const req = new ct.RequestType("$/runCN");
+async function cnTest(functionName?: string) {
+    const req: ct.RequestType<TestGenParams, TestGenResponse, unknown> =
+        new ct.RequestType("$/cnTestGen");
+
+    const activeEditor = vsc.window.activeTextEditor;
+    if (activeEditor === undefined) {
+        vsc.window.showErrorMessage("CN client: no file currently open");
+        return;
+    }
+
+    const params: TestGenParams = {
+        uri: activeEditor.document.uri.toString(),
+        fn: functionName,
+    };
+
+    const response = await client.sendRequest(req, params);
+    let entrypointUri = vsc.Uri.parse(response.entrypoint);
+
+    // Per https://code.visualstudio.com/api/references/contribution-points#contributes.taskDefinitions:
+    // > When the extension actually creates a `Task`, it needs to pass a
+    // > `TaskDefinition` that conforms to the task definition contributed in
+    // > the package.json file.
+    let taskDefinition = { type: "cnTest" };
+    let taskScope = vsc.TaskScope.Workspace;
+    let taskName = "test";
+    let taskSource = "CN";
+    let taskExec = new vsc.ProcessExecution(entrypointUri.path);
+
+    let task = new vsc.Task(
+        taskDefinition,
+        taskScope,
+        taskName,
+        taskSource,
+        taskExec
+    );
+
+    await vsc.tasks.executeTask(task);
+}
+
+async function cnVerify(functionName?: string, functionRange?: ct.Range) {
+    const req = new ct.RequestType("$/cnVerify");
 
     const activeEditor = vsc.window.activeTextEditor;
     if (activeEditor === undefined) {
@@ -94,7 +141,7 @@ async function runCN(functionName?: string, functionRange?: ct.Range) {
     };
 
     let conf = vsc.workspace.getConfiguration("CN");
-    let runOnSave: Maybe<boolean> = conf.get("runOnSave");
+    let verifyFileOnSave: Maybe<boolean> = conf.get("verifyFileOnSave");
 
     if (functionName) {
         // The only way for this to trigger is if a user clicked a per-function
@@ -104,11 +151,24 @@ async function runCN(functionName?: string, functionRange?: ct.Range) {
         client.sendRequest(req, params);
     } else {
         await vsc.workspace.save(activeEditor.document.uri);
-        if (runOnSave === undefined || runOnSave === false) {
+        if (verifyFileOnSave === undefined || verifyFileOnSave === false) {
             client.sendRequest(req, params);
         }
     }
 }
+
+// This schema is meant to match the one defined by `cn-lsp`'s
+// `Server.TestGenParams.t` type.
+type TestGenParams = {
+    uri: ct.DocumentUri;
+    fn?: string;
+};
+
+// This schema is meant to match the one defined by `cn-lsp`'s
+// `Server.TestGenResponse.t` type.
+type TestGenResponse = {
+    entrypoint: ct.DocumentUri;
+};
 
 // This schema is meant to match the one defined by `cn-lsp`'s
 // `Server.VerifyParams.t` type.
@@ -185,7 +245,9 @@ async function newServerContext(
     return undefined;
 }
 
-function getConfiguredServerContext(context: vsc.ExtensionContext): Maybe<ServerContext> {
+function getConfiguredServerContext(
+    context: vsc.ExtensionContext
+): Maybe<ServerContext> {
     let conf = vsc.workspace.getConfiguration("CN");
     let serverPath: Maybe<string> = conf.get("serverPath");
     let runtimeDir: Maybe<string> = conf.get("runtimeDir");
@@ -204,8 +266,14 @@ function getConfiguredServerContext(context: vsc.ExtensionContext): Maybe<Server
     ) {
         return { serverPath, runtimeDir };
     } else {
-        const bundledServer = vsc.Uri.joinPath(context.extensionUri, "cn-lsp-server");
-        const bundledRuntime = vsc.Uri.joinPath(context.extensionUri, "fake-opam");
+        const bundledServer = vsc.Uri.joinPath(
+            context.extensionUri,
+            "cn-lsp-server"
+        );
+        const bundledRuntime = vsc.Uri.joinPath(
+            context.extensionUri,
+            "fake-opam"
+        );
         if (
             fs.existsSync(bundledServer.path) &&
             fs.existsSync(bundledRuntime.path)
