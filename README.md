@@ -107,6 +107,7 @@ with `dune`:
 ```sh
 opam switch .
 eval $(opam env)
+opam install . --deps-only --locked -y
 dune build
 dune install
 ```
