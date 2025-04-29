@@ -87,7 +87,7 @@ let request_code_lens_refresh (notify_back : Rpc.notify_back) : unit IO.t =
   IO.return ()
 ;;
 
-class lsp_server (env : Verify.cerb_env) =
+class cn_lsp_server (env : Verify.cerb_env) =
   object (self)
     val env : Verify.cerb_env = env
     val mutable report_storage_dir : string option = None
@@ -536,23 +536,22 @@ class lsp_server (env : Verify.cerb_env) =
    its behavior.
 *)
 
-let run ~(socket_path : string) : unit =
+let create_server () : (cn_lsp_server, Verify.Error.t) Result.t =
+  match Verify.(setup ()) with
+  | Ok env -> Ok (new cn_lsp_server env)
+  | Error e -> Error e
+;;
+
+(** Run the server, using the provided socket path for communication with the
+    client *)
+let run_server (cn_lsp_server : cn_lsp_server) ~(socket_path : string) : unit =
   let open IO in
-  let () = Log.d "Starting" in
-  let cn_env =
-    match Verify.(setup ()) with
-    | Ok t -> t
-    | Error e ->
-      let msg = Verify.Error.to_string e in
-      let () = Log.e ("Failed to start: " ^ msg) in
-      Stdlib.exit 1
-  in
+  Log.d "Starting";
   (* We have separate declarations because we want this function to have access
      to the server's custom methods, but [Rpc.create] expects something
      encapsulated as an [Rpc.server] in particular - and that encapsulation
      hides our methods. *)
-  let cn_server = new lsp_server cn_env in
-  let rpc_server = (cn_server :> Rpc.server) in
+  let rpc_server = (cn_lsp_server :> Rpc.server) in
   let sockaddr = Lwt_unix.ADDR_UNIX socket_path in
   let sock = Lwt_unix.(socket PF_UNIX SOCK_STREAM) 0 in
   let task =
@@ -567,7 +566,7 @@ let run ~(socket_path : string) : unit =
            upgrading to 0.7+, this logic can and should move to the
            [on_req_shutdown] method introduced in 0.7 *)
         let event_data () = EventData.{ event_type = ServerStop; event_result = None } in
-        cn_server#record_telemetry event_data;
+        cn_lsp_server#record_telemetry event_data;
         true
       | `Running -> false
     in

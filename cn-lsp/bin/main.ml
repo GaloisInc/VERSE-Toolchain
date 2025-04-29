@@ -52,7 +52,10 @@ let parse_arguments () : options =
 let main () : unit =
   let options = parse_arguments () in
   log_setup options.log_path;
-  Server.run ~socket_path:options.pipe_path
+  match Server.create_server () with
+  | Error e ->
+    failwith (Printf.sprintf "Unable to create server: %s" (Verify.Error.to_string e))
+  | Ok server -> Server.run_server server ~socket_path:options.pipe_path
 ;;
 
 let () = main ()
