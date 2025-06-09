@@ -93,7 +93,7 @@ Proverbot setup:
   # Install node.js dependencies
   npm install
   # Build the package
-  npm exec vsce -- package
+  npm exec vsce package
   ```
 
   This will create a file named `coq-synthesis-vscode-${version}.vsix
